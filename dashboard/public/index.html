@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HELP Agent Dashboard</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>HELP Agent</h1>
+    <p id="status">Loading...</p>
+  </header>
+
+  <main>
+    <section id="positions-panel">
+      <h2>Open Positions</h2>
+      <div id="positions-list"></div>
+    </section>
+
+    <section id="charts-panel">
+      <h2>Performance</h2>
+      <canvas id="pnl-chart" height="200"></canvas>
+      <canvas id="pool-chart" height="200"></canvas>
+    </section>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+  <script type="module" src="/js/charts.js"></script>
+</body>
+</html>

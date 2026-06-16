@@ -1,0 +1,10 @@
+node_modules
+.env
+.git
+logs/*.json
+data/
+positions.json
+trade-history.json
+hivemind-insights.json
+*.md
+!README.md

@@ -1,0 +1,36 @@
+{
+  "screeningIntervalMin": 30,
+  "managementIntervalMin": 5,
+  "screening": {
+    "weights": {
+      "volume24h": 0.3,
+      "feeApr": 0.25,
+      "volatility": 0.2,
+      "holderQuality": 0.15,
+      "binUtilization": 0.1
+    },
+    "minScore": 0.5,
+    "topCandidatesLimit": 10
+  },
+  "deploy": {
+    "maxDeployPct": 0.25,
+    "minSolReserve": 0.05,
+    "defaultMode": "SPOT"
+  },
+  "risk": {
+    "bannedCategories": [
+      "Gambling",
+      "Porn/NSFW",
+      "Prediction Market",
+      "Perpetual DEX",
+      "Binary Option",
+      "Lending/Borrowing"
+    ],
+    "keywordBlacklist": []
+  },
+  "exit": {
+    "takeProfitPct": 10,
+    "stopLossPct": 5,
+    "trailingStopPct": 3
+  }
+}

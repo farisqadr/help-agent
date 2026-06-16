@@ -1,0 +1,24 @@
+{
+  "name": "help-agent",
+  "version": "0.1.0",
+  "description": "HELP — Hermes Liquidity Provider autonomous LP agent for Meteora DLMM on Solana",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "cli": "node cli.js",
+    "setup": "node setup.js",
+    "test": "node --test 'tests/**/*.test.js'"
+  },
+  "dependencies": {
+    "@meteora-ag/dlmm": "1.9.4",
+    "@solana/web3.js": "^1.98.0",
+    "bs58": "^6.0.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  },
+  "license": "MIT"
+}

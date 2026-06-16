@@ -4,7 +4,7 @@
 
 **Project:** HELP (Hermes Liquidity Provider) — Autonomous LP agent for Meteora DLMM on Solana.
 **Public Repo:** `farisqadr/help-agent` → **help.xflow.id** (via Coolify + Traefik)
-**Engine Repo:** `farisqadr/meridian` (private, runs on server)
+**Engine:** This repository (consolidated greenfield build)
 **Last Updated:** 2026-06-17
 
 ---
@@ -135,34 +135,41 @@ WALLET_PRIVATE_KEY=xxx  # encrypted via setup.js
 
 *AI Developer: Saat memulai sesi, tanyakan kepada User nomor TODO mana yang saat ini sedang dikerjakan untuk melanjutkan konteks.*
 
+### Phase 0: Bootstrap
+- [x] **TODO 0.1:** Init Node.js ESM project, package.json, Dockerfile — 2026-06-17
+
 ### Phase 1: Foundation
-- [ ] **TODO 1.1:** Init project environment, RPC connection
-- [ ] **TODO 1.2:** Meteora DLMM SDK integration
-- [ ] **TODO 1.3:** Wallet setup (keypair + encryption via `setup.js`)
+- [x] **TODO 1.1:** Init project environment, RPC connection — 2026-06-17
+- [x] **TODO 1.2:** Meteora DLMM SDK integration — 2026-06-17
+- [x] **TODO 1.3:** Wallet setup (keypair + encryption via `setup.js`) — 2026-06-17
 
 ### Phase 2: Risk Engine & Screener
-- [ ] **TODO 2.1:** Risk filter — banned categories + keywords
-- [ ] **TODO 2.2:** Pool scoring + `getTopCandidates`
-- [ ] **TODO 2.3:** Screening log + decision log (JSON files)
+- [x] **TODO 2.1:** Risk filter — banned categories + keywords — 2026-06-17
+- [x] **TODO 2.2:** Pool scoring + `getTopCandidates` — 2026-06-17
+- [x] **TODO 2.3:** Screening log + decision log (JSON files) — 2026-06-17
 
 ### Phase 3: Entry Execution
-- [ ] **TODO 3.1:** SPOT / CURVE / BID_ASK bin calculation
-- [ ] **TODO 3.2:** `deployPosition` via Meteora SDK
-- [ ] **TODO 3.3:** Auto-range calculator based on volatility
+- [x] **TODO 3.1:** SPOT / CURVE / BID_ASK bin calculation — 2026-06-17
+- [x] **TODO 3.2:** `deployPosition` via Meteora SDK — 2026-06-17
+- [x] **TODO 3.3:** Auto-range calculator based on volatility — 2026-06-17
 
 ### Phase 4: Monitoring & Exit
-- [ ] **TODO 4.1:** Daemon — async position monitor
-- [ ] **TODO 4.2:** Evaluator — TP, SL, Trailing Stop logic
-- [ ] **TODO 4.3:** `closePosition` — withdraw from DLMM
-- [ ] **TODO 4.4:** Auto-swap to SOL (Jupiter API)
+- [x] **TODO 4.1:** Daemon — async position monitor — 2026-06-17
+- [x] **TODO 4.2:** Evaluator — TP, SL, Trailing Stop logic — 2026-06-17
+- [x] **TODO 4.3:** `closePosition` — withdraw from DLMM — 2026-06-17
+- [x] **TODO 4.4:** Auto-swap to SOL (Jupiter API) — 2026-06-17
 
 ### Phase 5: Self-Learning & Optimization
 
-- [ ] **TODO 5.1** Post-trade PnL analysis | 🔜 | Compare actual vs expected PnL |
-- [ ] **TODO 5.2** ZVec memory integration | 🔜 | Vector + FTS hybrid pattern memory |
-- [ ] **TODO 5.3** Feedback loop → auto-adjust weights | 🔜 | Screening & exit tuning from history |
-- [ ] **TODO 5.4** Dashboard live charts | 🔜 | PnL history, pool performance |
-- [ ] **TODO 5.5** HiveMind cross-agent learning | 🔜 | Shared pool insights across sessions |
+- [x] **TODO 5.1** Post-trade PnL analysis — 2026-06-17
+- [x] **TODO 5.2** ZVec memory integration — 2026-06-17
+- [x] **TODO 5.3** Feedback loop → auto-adjust weights — 2026-06-17
+- [x] **TODO 5.4** Dashboard live charts — 2026-06-17
+- [x] **TODO 5.5** HiveMind cross-agent learning — 2026-06-17
+
+### Phase 6: Deployment
+- [x] **TODO 6.1** Dockerfile + docker-compose + Coolify docs — 2026-06-17
+- [ ] **TODO 6.2** DNS + Coolify app live at help.xflow.id (operator task)
 
 ---
 

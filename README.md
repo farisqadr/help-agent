@@ -6,15 +6,13 @@
 
 **Autonomous liquidity provider agent for Meteora DLMM on Solana.**
 
-> **Live:** [help.xflow.id](https://help.xflow.id) · **Engine:** [Meridian](https://github.com/farisqadr/meridian) (private) · **License:** [MIT](./LICENSE)
+> **Live:** [help.xflow.id](https://help.xflow.id) · **License:** [MIT](./LICENSE)
 
 ---
 
 ## Overview
 
-**HELP** (Hermes Liquidity Provider) is the public-facing brand for an autonomous agent that manages liquidity positions on [Meteora DLMM](https://meteora.ag) (Solana). This repository (`farisqadr/help-agent`) hosts the project documentation, deployment configuration, and public presence for HELP.
-
-The agent runtime — **Meridian** — runs in a separate private repository and powers the full decision loop: pool screening, position deployment, active management, and exit execution. HELP represents what operators and the community interact with; Meridian is the engine underneath.
+**HELP** (Hermes Liquidity Provider) is an autonomous agent that manages liquidity positions on [Meteora DLMM](https://meteora.ag) (Solana). This repository (`farisqadr/help-agent`) contains the full agent engine, dashboard, deployment configuration, and documentation.
 
 HELP is designed to operate with minimal human intervention while respecting configurable risk boundaries, strategy modes, and safety controls such as dry-run mode.
 
@@ -60,7 +58,7 @@ Additional custom keyword blacklists can be configured via JSON.
 
 ### Self-Learning (ZVec Memory)
 
-HELP integrates **ZVec** (vector + full-text hybrid search) to retain pattern memory across sessions. Trade outcomes feed into an evolving knowledge base that informs future screening and management decisions. Feedback-loop weight adjustment is on the roadmap (see [Roadmap](#roadmap)).
+HELP integrates **ZVec-style** pattern memory (vector + full-text hybrid search) to retain trade patterns across sessions. Trade outcomes feed a feedback loop that auto-adjusts screening weights and HiveMind pool insights.
 
 ---
 
@@ -68,16 +66,10 @@ HELP integrates **ZVec** (vector + full-text hybrid search) to retain pattern me
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     HELP (Public Layer)                      │
-│         Documentation · Deployment · help.xflow.id           │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  Meridian Engine (Private)                   │
+│                     HELP Agent (help-agent)                  │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │              Daemon (index.js)                         │  │
-│  │   REPL · Cron · Telegram · PnL Poller · Briefing      │  │
+│  │   Cron · Screening · Management · Dashboard            │  │
 │  └────────────┬──────────────────────────┬───────────────┘  │
 │               │                          │                   │
 │        runScreeningCycle          runManagementCycle         │
@@ -105,8 +97,8 @@ HELP integrates **ZVec** (vector + full-text hybrid search) to retain pattern me
 
 | Layer | Component | Description |
 |-------|-----------|-------------|
-| **Engine** | Meridian | Node.js 22+ ESM daemon with LLM-driven ReAct loop, 40+ on-chain tools |
-| **Dashboard** | Express + WebSocket SPA | Real-time status, positions, and controls (port `4321`) |
+| **Engine** | `index.js`, `agent.js`, `tools/` | Node.js 22+ ESM daemon with LLM-driven ReAct loop |
+| **Dashboard** | Express + WebSocket SPA | Real-time status, positions, charts (port `4321`) |
 | **Deployment** | Coolify + Traefik | Auto-SSL reverse proxy serving [help.xflow.id](https://help.xflow.id) |
 
 ---
@@ -157,7 +149,6 @@ All stages run inside a ReAct loop where an LLM orchestrates tool calls with bui
 - **Node.js 22+** with ESM support
 - A **Solana wallet** with SOL for gas and LP capital
 - API keys for **Helius** (RPC) and **Jupiter** (swaps)
-- Access to the Meridian engine repository (private)
 
 ### Environment Setup
 
@@ -170,22 +161,28 @@ DRY_RUN=true
 WALLET_PRIVATE_KEY=YOUR_ENCRYPTED_KEY
 ```
 
-> **Security:** Never commit `.env` files or raw private keys to version control. Use `setup.js` in Meridian to encrypt wallet keys before storing them. Start with `DRY_RUN=true` until you have validated screening and deployment behavior.
+> **Security:** Never commit `.env` files or raw private keys to version control. Use `npm run setup` to encrypt wallet keys before storing them. Start with `DRY_RUN=true` until you have validated screening and deployment behavior.
 
 ### Quick Start
 
 ```bash
+npm install
+
+# Encrypt wallet keypair (interactive)
+npm run setup
+
 # Run a single screening pass (dry run — no on-chain transactions)
-node cli.js screen --dry-run
+DRY_RUN=true node cli.js screen
 
 # Start the full daemon in dry-run mode
-DRY_RUN=true node index.js
+DRY_RUN=true npm start
 
-# Check dashboard status (when daemon is running)
+# Check agent status
+DRY_RUN=true node cli.js status
+
+# Dashboard (when daemon is running)
 curl -s http://localhost:4321/api/status
 ```
-
-> These commands run against the **Meridian engine**. This public repository documents the system; clone and run Meridian for local development.
 
 ---
 
@@ -202,7 +199,7 @@ curl -s http://localhost:4321/api/status
 
 ### User Config
 
-Runtime behavior (intervals, strategy defaults, risk keywords, TP/SL thresholds) is controlled via `user-config.json` in the Meridian engine. See [HELP-MRD.md](./HELP-MRD.md) for the full configuration reference.
+Runtime behavior (intervals, strategy defaults, risk keywords, TP/SL thresholds) is controlled via `user-config.json`. See [HELP-MRD.md](./HELP-MRD.md) for the full configuration reference.
 
 ### Security Best Practices
 
@@ -231,7 +228,7 @@ Cloudflare (DNS + proxy) → Coolify v4.1.0 → Traefik (auto SSL) → help.xflo
 5. Coolify auto-builds and deploys on push to `main`
 6. Verify SSL and routing at https://help.xflow.id
 
-The Meridian engine runs on the same infrastructure and is managed separately from this public repository.
+See [deploy/coolify.md](./deploy/coolify.md) for persistent volumes, health checks, and production hardening.
 
 ---
 
@@ -240,7 +237,8 @@ The Meridian engine runs on the same infrastructure and is managed separately fr
 | Document | Description |
 |----------|-------------|
 | [HELP-MRD.md](./HELP-MRD.md) | Master Reference Document — full system architecture, file map, deployment checklist, and development tracker |
-| [Phase 5 Plan](./docs/superpowers/plans/2026-06-17-phase-5-self-learning-optimization.md) | Self-learning and optimization roadmap detail |
+| [Greenfield Master Plan](./docs/superpowers/plans/2026-06-17-help-greenfield-master.md) | Full implementation plan (Phases 0–6) |
+| [Phase 5 Plan](./docs/superpowers/plans/2026-06-17-phase-5-self-learning-optimization.md) | Self-learning module detail |
 
 ---
 
@@ -248,27 +246,19 @@ The Meridian engine runs on the same infrastructure and is managed separately fr
 
 | Phase | Status | Highlights |
 |-------|--------|------------|
-| **Phase 1 — Foundation** | ✅ Complete | Project init, RPC connection, Meteora DLMM SDK, wallet encryption |
-| **Phase 2 — Risk Engine & Screener** | ✅ Complete | Category/keyword filters, pool scoring, decision logging |
-| **Phase 3 — Entry Execution** | ✅ Complete | SPOT/CURVE/BID-ASK bin calculation, `deployPosition`, auto-range |
-| **Phase 4 — Monitoring & Exit** | ✅ Complete | Position monitor, TP/SL/trailing evaluator, close + Jupiter swap |
-| **Phase 5 — Self-Learning & Optimization** | 🔄 In progress | See below |
-
-### Phase 5 (Active)
-
-| Item | Status |
-|------|--------|
-| Post-trade PnL analysis (actual vs expected) | 🔜 Planned |
-| ZVec memory integration | ✅ Done |
-| Feedback loop → auto-adjust screening & exit weights | 🔜 Planned |
-| Dashboard live charts (PnL history, pool performance) | 🔜 Planned |
-| HiveMind cross-agent learning (shared pool insights) | 🔜 Planned |
+| **Phase 0 — Bootstrap** | ✅ Complete | Node.js ESM project, config, Dockerfile |
+| **Phase 1 — Foundation** | ✅ Complete | RPC, Meteora DLMM SDK, wallet encryption |
+| **Phase 2 — Risk Engine & Screener** | ✅ Complete | Risk filters, pool scoring, decision logging |
+| **Phase 3 — Entry Execution** | ✅ Complete | SPOT/CURVE/BID-ASK bins, deployPosition, auto-range |
+| **Phase 4 — Monitoring & Exit** | ✅ Complete | Position monitor, TP/SL/trailing, close + Jupiter swap |
+| **Phase 5 — Self-Learning** | ✅ Complete | PnL analysis, ZVec memory, feedback loop, charts, HiveMind |
+| **Phase 6 — Deployment** | 🔄 Operator | Coolify config ready; DNS + live deploy pending |
 
 ---
 
 ## Contributing
 
-Contributions are welcome. This repository primarily holds documentation and deployment configuration for the HELP brand. For engine-level changes, coordinate with the Meridian maintainers.
+Contributions are welcome. This repository contains the full HELP agent engine, dashboard, tests, and deployment configuration.
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/your-change`)
