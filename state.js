@@ -3,11 +3,16 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const POSITIONS_PATH = resolve(__dirname, 'positions.json');
+
+function positionsPath() {
+  return process.env.POSITIONS_PATH
+    ? resolve(process.env.POSITIONS_PATH)
+    : resolve(__dirname, 'positions.json');
+}
 
 async function loadPositions() {
   try {
-    const data = await readFile(POSITIONS_PATH, 'utf8');
+    const data = await readFile(positionsPath(), 'utf8');
     return JSON.parse(data);
   } catch (err) {
     if (err.code === 'ENOENT') return [];
@@ -16,7 +21,7 @@ async function loadPositions() {
 }
 
 async function savePositions(positions) {
-  await writeFile(POSITIONS_PATH, JSON.stringify(positions, null, 2));
+  await writeFile(positionsPath(), JSON.stringify(positions, null, 2));
 }
 
 export async function listOpenPositions() {
@@ -42,6 +47,9 @@ export async function openPosition(data) {
     peakPnlPct: 0,
     binRange: data.binRange,
     factors: data.factors ?? {},
+    exit: data.exit ?? null,
+    rangeMode: data.rangeMode ?? 'auto',
+    tokenMint: data.tokenMint ?? null,
     status: 'OPEN',
     openedAt: Date.now(),
     closedAt: null,

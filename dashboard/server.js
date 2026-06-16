@@ -8,6 +8,7 @@ import { listOpenPositions } from '../state.js';
 import { healthCheck } from '../tools/rpc.js';
 import { getSolBalance } from '../tools/wallet.js';
 import { createChartsRouter } from './routes/charts.js';
+import { createControlRouter } from './routes/control.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 let wss = null;
@@ -34,6 +35,7 @@ function basicAuth(req, res, next) {
 export async function startDashboard() {
   const app = express();
   app.use(basicAuth);
+  app.use(express.json({ limit: '256kb' }));
   app.use(express.static(resolve(__dirname, 'public')));
 
   app.get('/api/status', async (_req, res) => {
@@ -55,6 +57,8 @@ export async function startDashboard() {
     const positions = await listOpenPositions();
     res.json({ positions });
   });
+
+  app.use(createControlRouter());
 
   const chartsHandler = createChartsRouter();
   app.use('/api/charts', (req, res) => {

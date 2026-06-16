@@ -109,6 +109,54 @@ export const toolDefinitions = [
   {
     type: 'function',
     function: {
+      name: 'getActiveBin',
+      description: 'Get active bin ID and price for a DLMM pool',
+      parameters: {
+        type: 'object',
+        properties: { poolAddress: { type: 'string' } },
+        required: ['poolAddress'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'getTokenMetadata',
+      description: 'Get token metadata including categories for risk filtering',
+      parameters: {
+        type: 'object',
+        properties: { mint: { type: 'string' } },
+        required: ['mint'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'getTokenBalances',
+      description: 'List SPL token balances in wallet',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'healthCheck',
+      description: 'Check RPC connectivity and latency',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'runFeedbackLoop',
+      description: 'Run feedback loop to tune screening weights from trade history',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'searchSimilarPatterns',
       description: 'Search ZVec memory for similar trade patterns',
       parameters: {
@@ -124,9 +172,9 @@ export const toolDefinitions = [
 ];
 
 const ROLE_TOOLS = {
-  SCREENER: ['getTopCandidates', 'passesRiskFilter', 'getPoolInfo', 'deployPosition', 'getSolBalance', 'searchSimilarPatterns'],
-  MANAGER: ['listOpenPositions', 'evaluatePosition', 'closePosition', 'getPoolInfo', 'getSolBalance'],
-  GENERAL: ['getTopCandidates', 'listOpenPositions', 'getSolBalance', 'getPoolInfo'],
+  SCREENER: ['getTopCandidates', 'passesRiskFilter', 'getPoolInfo', 'deployPosition', 'getSolBalance', 'searchSimilarPatterns', 'getTokenMetadata', 'healthCheck'],
+  MANAGER: ['listOpenPositions', 'evaluatePosition', 'closePosition', 'getPoolInfo', 'getSolBalance', 'getActiveBin', 'runFeedbackLoop'],
+  GENERAL: ['getTopCandidates', 'listOpenPositions', 'getSolBalance', 'getPoolInfo', 'healthCheck', 'getTokenBalances'],
 };
 
 export function getToolsForRole(role) {

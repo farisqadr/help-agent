@@ -1,0 +1,31 @@
+services:
+  help-agent:
+    build: .
+    ports:
+      - "4321:4321"
+    env_file:
+      - .env
+    environment:
+      DRY_RUN: "true"
+    volumes:
+      - help-positions:/app/positions.json
+      - help-trades:/app/trade-history.json
+      - help-hivemind:/app/hivemind-insights.json
+      - help-zvec:/app/data/zvec
+      - help-logs:/app/logs
+      - help-config:/app/user-config.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4321/api/status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  help-positions:
+  help-trades:
+  help-hivemind:
+  help-zvec:
+  help-logs:
+  help-config:

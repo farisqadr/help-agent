@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { config, isDryRun } from './config.js';
-import { runScreeningCycle, runManagementCycle } from './index.js';
+import { runScreeningCycle, runManagementCycle } from './lib/cycles.js';
 import { healthCheck } from './tools/rpc.js';
 import { getSolBalance } from './tools/wallet.js';
 import { listOpenPositions } from './state.js';

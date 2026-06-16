@@ -10,7 +10,7 @@
 |-------|--------|-----------|
 | 0 Bootstrap | Done | `package.json`, `config.js`, `Dockerfile`, `docker-compose.yml` |
 | 1 Foundation | Done | `tools/rpc.js`, `tools/dlmm.js`, `tools/wallet.js`, `setup.js` |
-| 2 Screener | Done | `tools/risk.js`, `tools/screening.js`, `lib/logger.js`, `agent.js` |
+| 2 Screener | Done | `tools/risk.js`, `tools/screening.js`, `tools/meteora-api.js` (live discovery) |
 | 3 Entry | Done | `lib/bins.js`, `state.js`, deploy in `tools/executor.js` |
 | 4 Monitor/Exit | Done | `lib/evaluator.js`, close + Jupiter swap, `dashboard/` |
 | 5 Self-learning | Done | `lib/pnl-analysis.js`, `lib/feedback-loop.js`, `lib/hivemind.js`, `tools/study.js`, charts |
@@ -20,7 +20,7 @@
 
 ```bash
 npm install
-DRY_RUN=true npm test          # 35 tests
+DRY_RUN=true npm test          # 39 tests
 DRY_RUN=true node cli.js status
 DRY_RUN=true node cli.js screen
 ```

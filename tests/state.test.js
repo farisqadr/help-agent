@@ -1,9 +1,10 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { unlink } from 'node:fs/promises';
-import { openPosition, listOpenPositions, closePositionState } from '../state.js';
 
-const POSITIONS = 'positions.json';
+const POSITIONS = 'positions.state-test.json';
+process.env.POSITIONS_PATH = POSITIONS;
+const { openPosition, listOpenPositions, closePositionState } = await import('../state.js');
 
 before(async () => { await unlink(POSITIONS).catch(() => {}); });
 after(async () => { await unlink(POSITIONS).catch(() => {}); });

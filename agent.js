@@ -44,7 +44,7 @@ async function callLlm(messages, tools) {
   return data.choices?.[0]?.message;
 }
 
-async function runDeterministicScreener() {
+export async function runDeterministicScreener() {
   const result = await getTopCandidates();
   await logScreening(result);
 
@@ -62,6 +62,12 @@ async function runDeterministicScreener() {
     return result;
   }
 
+  if (config.deploy?.autoDeploy === false) {
+    await logDecision({ action: 'skip', reason: 'auto-deploy disabled', poolAddress: top.poolAddress });
+    console.log('[screener] auto-deploy disabled, skipping deploy');
+    return result;
+  }
+
   const open = await listOpenPositions();
   if (open.length > 0) {
     await logDecision({ action: 'skip', reason: 'position already open' });
@@ -72,7 +78,12 @@ async function runDeterministicScreener() {
   const balance = await getSolBalance();
   const maxDeployPct = config.deploy?.maxDeployPct ?? 0.25;
   const minReserve = config.deploy?.minSolReserve ?? 0.05;
-  const solAmount = Math.max(0, (balance.sol - minReserve) * maxDeployPct);
+  const available = Math.max(0, balance.sol - minReserve);
+  // Custom fixed size takes precedence over percentage-based sizing, capped by available balance.
+  const customSol = config.deploy?.autoDeploySol;
+  const solAmount = customSol > 0
+    ? Math.min(customSol, available)
+    : available * maxDeployPct;
 
   if (solAmount <= 0) {
     await logDecision({ action: 'skip', reason: 'insufficient SOL' });
@@ -118,7 +129,7 @@ async function runDeterministicScreener() {
   return { ...result, deployed };
 }
 
-async function runDeterministicManager() {
+export async function runDeterministicManager() {
   const positions = await listOpenPositions();
   const results = [];
 

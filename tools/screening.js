@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { isDryRun } from '../config.js';
+import { config, isDryRun } from '../config.js';
 import { passesRiskFilter } from './risk.js';
 import { getPoolBoost } from '../lib/hivemind.js';
+import { discoverPoolsLive } from './meteora-api.js';
+import { getHolderQuality } from './token.js';
 
 const DEFAULT_WEIGHTS = {
   volume24h: 0.3,
@@ -67,6 +69,18 @@ const DRY_POOLS = [
 export async function discoverPools() {
   if (isDryRun()) {
     return DRY_POOLS;
+  }
+  const live = await discoverPoolsLive(config.screening?.discoverLimit ?? 50);
+  if (live?.length) {
+    const enriched = await Promise.all(live.map(async (pool) => {
+      if (pool.tokenMint && pool.holderQuality === 0.5) {
+        try {
+          pool.holderQuality = await getHolderQuality(pool.tokenMint);
+        } catch { /* keep default */ }
+      }
+      return pool;
+    }));
+    return enriched;
   }
   return DRY_POOLS;
 }
