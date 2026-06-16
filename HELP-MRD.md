@@ -11,14 +11,13 @@
 
 ## 1. PROJECT OVERVIEW
 
-HELP adalah public-facing brand dari **Meridian** — autonomous agent yang manage liquidity positions di Meteora DLMM (Solana).
+HELP adalah public-facing brand dari autonomous agent yang manage liquidity positions di Meteora DLMM (Solana).
 
 | Layer | Detail |
 |-------|--------|
-| **Engine** | Meridian — Node.js 22+ ESM, LLM-driven ReAct loop |
+| **Engine** | Node.js 22+ ESM, LLM-driven ReAct loop |
 | **Dashboard** | Express + WebSocket SPA, port 4321 |
 | **Deployment** | Coolify v4.1.0 → Traefik SSL → help.xflow.id |
-| **Server** | Tencent Cloud 43.134.169.79 |
 | **RPC** | Helius |
 | **Swap** | Jupiter API v6 |
 | **Memory** | ZVec v0.5.0 (vector + FTS hybrid) |
@@ -82,7 +81,7 @@ Auto-reject pools with categories: Gambling, Porn/NSFW, Prediction Market, Perpe
                           └──────────────────┘
 ```
 
-### File Map (Engine — `/home/ubuntu/meridian/`)
+### File Map (Engine)
 
 | File | Purpose |
 |------|---------|
@@ -107,7 +106,7 @@ Auto-reject pools with categories: Gambling, Porn/NSFW, Prediction Market, Perpe
 ### Infrastructure
 
 ```
-Cloudflare (proxied) → Tencent Cloud 43.134.169.79
+Cloudflare (proxied) → Server
                          → Coolify v4.1.0
                             → Traefik 80/443 (auto SSL)
                                → help.xflow.id
@@ -115,7 +114,7 @@ Cloudflare (proxied) → Tencent Cloud 43.134.169.79
 
 ### Setup Checklist (Coolify)
 
-- [ ] **DNS:** A record `help.xflow.id` → `43.134.169.79` (proxied)
+- [ ] **DNS:** A record `help.xflow.id` → `IP` (proxied)
 - [ ] **Coolify App:** New app → connect `farisqadr/help-agent` repo
 - [ ] **Domain:** Add `help.xflow.id` di Coolify app settings
 - [ ] **Build:** Coolify auto-build + deploy on push to `main`
@@ -136,36 +135,34 @@ WALLET_PRIVATE_KEY=xxx  # encrypted via setup.js
 
 *AI Developer: Saat memulai sesi, tanyakan kepada User nomor TODO mana yang saat ini sedang dikerjakan untuk melanjutkan konteks.*
 
-### Phase 1: Foundation ✅ (DONE)
-- [x] **TODO 1.1:** Init project environment, RPC connection
-- [x] **TODO 1.2:** Meteora DLMM SDK integration
-- [x] **TODO 1.3:** Wallet setup (keypair + encryption via `setup.js`)
+### Phase 1: Foundation
+- [ ] **TODO 1.1:** Init project environment, RPC connection
+- [ ] **TODO 1.2:** Meteora DLMM SDK integration
+- [ ] **TODO 1.3:** Wallet setup (keypair + encryption via `setup.js`)
 
-### Phase 2: Risk Engine & Screener ✅ (DONE)
-- [x] **TODO 2.1:** Risk filter — banned categories + keywords
-- [x] **TODO 2.2:** Pool scoring + `getTopCandidates`
-- [x] **TODO 2.3:** Screening log + decision log (JSON files)
+### Phase 2: Risk Engine & Screener
+- [ ] **TODO 2.1:** Risk filter — banned categories + keywords
+- [ ] **TODO 2.2:** Pool scoring + `getTopCandidates`
+- [ ] **TODO 2.3:** Screening log + decision log (JSON files)
 
-### Phase 3: Entry Execution ✅ (DONE)
-- [x] **TODO 3.1:** SPOT / CURVE / BID_ASK bin calculation
-- [x] **TODO 3.2:** `deployPosition` via Meteora SDK
-- [x] **TODO 3.3:** Auto-range calculator based on volatility
+### Phase 3: Entry Execution
+- [ ] **TODO 3.1:** SPOT / CURVE / BID_ASK bin calculation
+- [ ] **TODO 3.2:** `deployPosition` via Meteora SDK
+- [ ] **TODO 3.3:** Auto-range calculator based on volatility
 
-### Phase 4: Monitoring & Exit ✅ (DONE)
-- [x] **TODO 4.1:** Daemon — async position monitor
-- [x] **TODO 4.2:** Evaluator — TP, SL, Trailing Stop logic
-- [x] **TODO 4.3:** `closePosition` — withdraw from DLMM
-- [x] **TODO 4.4:** Auto-swap to SOL (Jupiter API)
+### Phase 4: Monitoring & Exit
+- [ ] **TODO 4.1:** Daemon — async position monitor
+- [ ] **TODO 4.2:** Evaluator — TP, SL, Trailing Stop logic
+- [ ] **TODO 4.3:** `closePosition` — withdraw from DLMM
+- [ ] **TODO 4.4:** Auto-swap to SOL (Jupiter API)
 
-### Phase 5: Self-Learning & Optimization 🔄 (ACTIVE)
+### Phase 5: Self-Learning & Optimization
 
-| TODO | Status | Notes |
-|------|--------|-------|
-| **TODO 5.1** Post-trade PnL analysis | 🔜 | Compare actual vs expected PnL |
-| **TODO 5.2** ZVec memory integration | ✅ DONE | Vector + FTS hybrid pattern memory |
-| **TODO 5.3** Feedback loop → auto-adjust weights | 🔜 | Screening & exit tuning from history |
-| **TODO 5.4** Dashboard live charts | 🔜 | PnL history, pool performance |
-| **TODO 5.5** HiveMind cross-agent learning | 🔜 | Shared pool insights across sessions |
+- [ ] **TODO 5.1** Post-trade PnL analysis | 🔜 | Compare actual vs expected PnL |
+- [ ] **TODO 5.2** ZVec memory integration | 🔜 | Vector + FTS hybrid pattern memory |
+- [ ] **TODO 5.3** Feedback loop → auto-adjust weights | 🔜 | Screening & exit tuning from history |
+- [ ] **TODO 5.4** Dashboard live charts | 🔜 | PnL history, pool performance |
+- [ ] **TODO 5.5** HiveMind cross-agent learning | 🔜 | Shared pool insights across sessions |
 
 ---
 
@@ -178,23 +175,6 @@ Jika Anda (AI) baru saja di-*reset* atau kehilangan konteks, ikuti prosedur ini 
 3. **Review State:** Minta user menempelkan kode terakhir yang dikerjakan (atau error terakhir) agar konteks tetap terjaga.
 4. **Execute:** Lanjutkan development dengan mengacu pada blueprint arsitektur di atas dan file structure yang ada.
 
-### Key Files for Context Recovery
-
-```bash
-# Cek status proses
-cat /home/ubuntu/meridian/state.json
-
-# Cek decision terakhir
-tail -20 /home/ubuntu/meridian/decision-log.json
-
-# Cek config aktif
-cat /home/ubuntu/meridian/user-config.json
-
-# Cek status daemon
-curl -s http://localhost:4321/api/status
-```
-
----
 
 ## 6. TECH STACK REFERENCE
 
