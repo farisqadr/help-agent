@@ -10,7 +10,7 @@
     "start": "node index.js",
     "cli": "node cli.js",
     "setup": "node setup.js",
-    "test": "node --test 'tests/**/*.test.js'"
+    "test": "DRY_RUN=true HELIUS_RPC_URL= JUPITER_API_KEY= LLM_API_KEY= WALLET_PRIVATE_KEY= node --test 'tests/**/*.test.js'"
   },
   "dependencies": {
     "@meteora-ag/dlmm": "1.9.4",

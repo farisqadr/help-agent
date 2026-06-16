@@ -78,8 +78,6 @@ export async function getTokenBalances() {
   });
 }
 
-const JUPITER_QUOTE_URL = 'https://quote-api.jup.ag/v6';
-
 export async function swapToSol(tokenMint, amount, slippageBps = 50) {
   if (isDryRun()) {
     return {
@@ -93,17 +91,18 @@ export async function swapToSol(tokenMint, amount, slippageBps = 50) {
   }
 
   const SOL_MINT = 'So11111111111111111111111111111111111111112';
+  const base = `${config.JUPITER_API_URL ?? 'https://api.jup.ag'}/swap/v1`;
   const headers = { 'Content-Type': 'application/json' };
   if (config.JUPITER_API_KEY) {
     headers['x-api-key'] = config.JUPITER_API_KEY;
   }
 
-  const quoteUrl = `${JUPITER_QUOTE_URL}/quote?inputMint=${tokenMint}&outputMint=${SOL_MINT}&amount=${amount}&slippageBps=${slippageBps}`;
+  const quoteUrl = `${base}/quote?inputMint=${tokenMint}&outputMint=${SOL_MINT}&amount=${amount}&slippageBps=${slippageBps}`;
   const quoteRes = await fetch(quoteUrl, { headers });
   if (!quoteRes.ok) throw new Error(`Jupiter quote failed: ${quoteRes.status}`);
   const quote = await quoteRes.json();
 
-  const swapRes = await fetch(`${JUPITER_QUOTE_URL}/swap`, {
+  const swapRes = await fetch(`${base}/swap`, {
     method: 'POST',
     headers,
     body: JSON.stringify({

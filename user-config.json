@@ -13,7 +13,7 @@
     "topCandidatesLimit": 10,
     "discoverLimit": 50,
     "poolListUrl": "https://dlmm.datapi.meteora.ag/pair/all",
-    "lastTunedAt": "2026-06-16T20:59:48.138Z"
+    "lastTunedAt": "2026-06-16T21:08:34.403Z"
   },
   "deploy": {
     "maxDeployPct": 0.25,

@@ -31,6 +31,8 @@ export const config = {
   ...userConfig,
   HELIUS_RPC_URL: process.env.HELIUS_RPC_URL ?? '',
   JUPITER_API_KEY: process.env.JUPITER_API_KEY ?? '',
+  JUPITER_TEAM_ID: process.env.JUPITER_TEAM_ID ?? '',
+  JUPITER_API_URL: process.env.JUPITER_API_URL ?? (process.env.JUPITER_API_KEY ? 'https://api.jup.ag' : 'https://lite-api.jup.ag'),
   LLM_API_URL: process.env.LLM_API_URL ?? 'https://api.openai.com/v1',
   LLM_API_KEY: process.env.LLM_API_KEY ?? '',
   DRY_RUN: envDryRun != null ? envDryRun : (userConfig.dryRun ?? true),
