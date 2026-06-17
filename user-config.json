@@ -9,17 +9,23 @@
       "holderQuality": 0.15,
       "binUtilization": 0.1
     },
-    "minScore": 0.5,
     "topCandidatesLimit": 10,
     "discoverLimit": 50,
     "poolListUrl": "https://dlmm.datapi.meteora.ag/pair/all",
-    "lastTunedAt": "2026-06-16T21:08:34.403Z"
+    "dexscreener": {
+      "enabled": false,
+      "minMarketCapUsd": 250000,
+      "maxMarketCapUsd": 0,
+      "minVolume24hUsd": 1000000,
+      "minLiquidityUsd": 0
+    },
+    "lastTunedAt": "2026-06-17T04:12:59.288Z"
   },
   "deploy": {
     "maxDeployPct": 0.25,
     "minSolReserve": 0.05,
     "defaultMode": "SPOT",
-    "autoDeploy": true,
+    "autoDeploy": false,
     "autoDeploySol": null
   },
   "risk": {
@@ -41,5 +47,5 @@
     "autoSwapToSol": true,
     "autoTune": false
   },
-  "dryRun": true
+  "dryRun": false
 }

@@ -4,12 +4,12 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readUserConfig, updateUserConfig } from '../../lib/config-store.js';
 import { runScreeningCycle, runManagementCycle } from '../../lib/cycles.js';
-import { getTopCandidates } from '../../tools/screening.js';
+import { getTopCandidates, screenNow } from '../../tools/screening.js';
 import { executeTool } from '../../tools/executor.js';
 import { listOpenPositions, updatePosition } from '../../state.js';
 import { startDaemon, stopDaemon, status as daemonStatus } from '../../lib/daemon.js';
 import { isDryRun, setDryRun } from '../../config.js';
-import { getWalletInfo, saveWalletKey, clearWalletKey, testWalletConnection } from '../../lib/wallet-store.js';
+import { getWalletInfo, saveWalletKey, clearWalletKey, testWalletConnection, connectWallet, disconnectWallet } from '../../lib/wallet-store.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOGS_DIR = resolve(__dirname, '..', '..', 'logs');
@@ -49,6 +49,12 @@ export function createControlRouter() {
   router.get('/api/candidates', asyncHandler(async (req, res) => {
     const limit = Number(req.query.limit) || undefined;
     res.json(await getTopCandidates(limit));
+  }));
+
+  // Screen Now: immediate discover + filter + score, no deploy.
+  router.post('/api/screen-now', asyncHandler(async (req, res) => {
+    const limit = Number(req.body?.limit) || undefined;
+    res.json(await screenNow(limit));
   }));
 
   router.post('/api/actions/screen', asyncHandler(async (_req, res) => {
@@ -114,8 +120,11 @@ export function createControlRouter() {
     const dryRun = Boolean(req.body?.dryRun);
     if (!dryRun) {
       const wallet = getWalletInfo();
-      if (!wallet.pubkey) {
-        throw new Error('Cannot switch to mainnet: configure a valid wallet first');
+      if (!wallet.canTrade) {
+        throw new Error(
+          'Cannot switch to mainnet: the agent needs a signing key to trade autonomously. ' +
+          'Import your private key (Solflare → Settings → Export Private Key).'
+        );
       }
     }
     res.json({ dryRun: setDryRun(dryRun), wallet: getWalletInfo() });
@@ -139,6 +148,15 @@ export function createControlRouter() {
 
   router.post('/api/wallet/test', asyncHandler(async (_req, res) => {
     res.json(await testWalletConnection());
+  }));
+
+  router.post('/api/wallet/connect', asyncHandler(async (req, res) => {
+    if (!req.body?.pubkey) throw new Error('pubkey is required');
+    res.json(connectWallet(req.body.pubkey));
+  }));
+
+  router.post('/api/wallet/disconnect', asyncHandler(async (_req, res) => {
+    res.json(disconnectWallet());
   }));
 
   // ---- Daemon ----

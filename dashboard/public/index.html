@@ -94,14 +94,25 @@
           <div class="card">
             <h2>Wallet</h2>
             <div class="kv"><span>Status</span><b id="wal-status">—</b></div>
-            <div class="kv"><span>Public key</span><b class="mono" id="wal-pubkey">—</b></div>
-            <label class="field mt"><span>Private key (base58 or JSON array)</span>
+            <div class="kv"><span>Active key (signing)</span><b id="wal-cantrade">—</b></div>
+            <div class="kv"><span>Address</span><b class="mono" id="wal-pubkey">—</b></div>
+
+            <h2 class="mt">Connect Solflare</h2>
+            <p class="muted">Connects your Solflare wallet to verify the address. The agent runs as a background daemon, so autonomous mainnet trading still requires importing the signing key below.</p>
+            <div class="actions">
+              <button class="btn" id="btn-solflare">Connect Solflare</button>
+              <button class="btn btn-danger" id="btn-solflare-disc">Disconnect</button>
+            </div>
+
+            <h2 class="mt">Import Private Key</h2>
+            <p class="muted">In Solflare: Settings → Export Private Key. Paste it here to let the agent sign and trade on mainnet.</p>
+            <label class="field"><span>Private key (base58 or JSON array)</span>
               <input type="password" id="wal-key" placeholder="Paste private key" autocomplete="off" />
             </label>
             <div class="actions">
-              <button class="btn btn-primary" id="btn-wal-save">Save Key</button>
+              <button class="btn btn-primary" id="btn-wal-save">Import Key</button>
               <button class="btn" id="btn-wal-test">Test Connection</button>
-              <button class="btn btn-danger" id="btn-wal-remove">Remove</button>
+              <button class="btn btn-danger" id="btn-wal-remove">Remove Key</button>
             </div>
             <div class="muted" id="wal-test" style="margin-top:10px"></div>
           </div>
@@ -119,13 +130,22 @@
         </header>
         <div class="grid grid-2">
           <div class="card">
-            <h2>Scoring Weights</h2>
-            <p class="muted">Relative importance of each factor. Auto-normalized to sum to 1.</p>
-            <div id="weights"></div>
+            <h2>DexScreener Market Filters</h2>
+            <p class="muted">Primary screening criteria — filter candidates by live market cap, 24h volume, and liquidity. Set a value to 0 to ignore that bound.</p>
+            <div class="cat-toggle">
+              <span>Enable DexScreener filtering</span>
+              <label class="switch"><input type="checkbox" id="dx-enabled" /><span class="slider"></span></label>
+            </div>
+            <div class="grid grid-2 tight mt">
+              <label class="field"><span>Min market cap (USD)</span><input type="number" id="dx-minmc" min="0" step="1000" placeholder="0" /></label>
+              <label class="field"><span>Max market cap (USD, 0 = none)</span><input type="number" id="dx-maxmc" min="0" step="1000" placeholder="0" /></label>
+              <label class="field"><span>Min 24h volume (USD)</span><input type="number" id="dx-minvol" min="0" step="1000" placeholder="0" /></label>
+              <label class="field"><span>Min liquidity (USD)</span><input type="number" id="dx-minliq" min="0" step="1000" placeholder="0" /></label>
+            </div>
+            <div class="actions"><button class="btn btn-primary" id="btn-save-dex">Save Market Filters</button></div>
           </div>
           <div class="card">
             <h2>Thresholds & Intervals</h2>
-            <label class="field"><span>Minimum score (0–1)</span><input type="number" id="sc-minScore" step="0.01" min="0" max="1" /></label>
             <label class="field"><span>Top candidates limit</span><input type="number" id="sc-top" min="1" max="100" /></label>
             <label class="field"><span>Discover limit (live pools)</span><input type="number" id="sc-discover" min="1" max="500" /></label>
             <label class="field"><span>Screening interval (min)</span><input type="number" id="sc-screenInt" min="1" max="1440" /></label>
@@ -149,11 +169,15 @@
         <div class="card">
           <div class="card-head">
             <h2>Candidates</h2>
-            <span class="muted" id="cand-meta"></span>
+            <div class="actions">
+              <span class="muted" id="cand-meta"></span>
+              <button class="btn btn-sm" id="btn-refresh-cand">Refresh</button>
+              <button class="btn btn-primary btn-sm" id="btn-screen-now">Screen Now</button>
+            </div>
           </div>
           <div class="table-wrap">
             <table id="cand-table">
-              <thead><tr><th>Pool</th><th>Score</th><th>Vol 24h</th><th>Fee APR</th><th>Volatility</th><th></th></tr></thead>
+              <thead><tr><th>Pool</th><th>Score</th><th>Mkt Cap</th><th>Vol 24h</th><th>Liquidity</th><th>Fee APR</th><th></th></tr></thead>
               <tbody></tbody>
             </table>
           </div>

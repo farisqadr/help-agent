@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isDryRun } from './config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -91,6 +92,7 @@ export async function closePositionState(positionId, { actualPnlSol, exitPrice }
     holdDurationMs: closed.closedAt - closed.openedAt,
     closedAt: new Date(closed.closedAt).toISOString(),
     factors: closed.factors,
+    dryRun: isDryRun(),
   });
   await appendTradeHistory(analyzed);
 

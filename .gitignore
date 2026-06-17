@@ -1,6 +1,7 @@
 node_modules/
 .env
 .wallet
+.wallet-address
 *.log
 logs/*.json
 !logs/.gitkeep

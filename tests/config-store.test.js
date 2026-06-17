@@ -1,14 +1,20 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, rename } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { readUserConfig, updateUserConfig } from '../lib/config-store.js';
 
 const PATH = resolve('user-config.json');
 let original;
 
+async function restoreAtomic() {
+  const tmp = `${PATH}.${process.pid}.restore.tmp`;
+  await writeFile(tmp, original);
+  await rename(tmp, PATH);
+}
+
 before(async () => { original = await readFile(PATH, 'utf8'); });
-after(async () => { await writeFile(PATH, original); });
+after(restoreAtomic);
 
 describe('config-store', () => {
   it('clamps out-of-range numbers', async () => {

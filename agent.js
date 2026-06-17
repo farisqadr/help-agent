@@ -54,13 +54,6 @@ export async function runDeterministicScreener() {
   }
 
   const top = result.candidates[0];
-  const minScore = config.screening?.minScore ?? 0.5;
-
-  if (top.score < minScore) {
-    await logDecision({ action: 'skip', reason: 'score below threshold', score: top.score });
-    console.log(`[screener] top candidate score ${top.score} below min ${minScore}`);
-    return result;
-  }
 
   if (config.deploy?.autoDeploy === false) {
     await logDecision({ action: 'skip', reason: 'auto-deploy disabled', poolAddress: top.poolAddress });

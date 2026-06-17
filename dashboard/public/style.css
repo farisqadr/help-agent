@@ -207,3 +207,19 @@ td.mono, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-si
 .hidden { display: none !important; }
 canvas { margin-top: 10px; }
 .empty { color: var(--muted); padding: 20px; text-align: center; }
+.row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.pool-cell { display: flex; flex-direction: column; gap: 4px; }
+.pool-head { display: flex; align-items: center; gap: 6px; }
+.pool-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.pool-row .muted { min-width: 36px; }
+.icon-link {
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--primary); opacity: 0.85; transition: opacity 0.15s;
+}
+.icon-link:hover { opacity: 1; }
+.btn-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 2px 4px; border: none; background: transparent;
+  color: var(--muted); cursor: pointer; border-radius: 4px;
+}
+.btn-icon:hover { color: var(--primary); background: var(--surface-2); }

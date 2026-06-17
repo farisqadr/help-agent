@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { config, isDryRun } from '../config.js';
 import { listOpenPositions } from '../state.js';
 import { healthCheck } from '../tools/rpc.js';
-import { getSolBalance } from '../tools/wallet.js';
+import { getWalletBalance } from '../lib/wallet-store.js';
 import { createChartsRouter } from './routes/charts.js';
 import { createControlRouter } from './routes/control.js';
 
@@ -41,7 +41,7 @@ export async function startDashboard() {
   app.get('/api/status', async (_req, res) => {
     const [rpc, balance, positions] = await Promise.all([
       healthCheck(),
-      getSolBalance(),
+      getWalletBalance(),
       listOpenPositions(),
     ]);
     res.json({

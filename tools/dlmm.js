@@ -2,15 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 import { config, isDryRun } from '../config.js';
 import { getConnection } from './rpc.js';
 import { getKeypair } from './wallet.js';
-
-let dlmmModule = null;
-
-async function loadDlmm() {
-  if (!dlmmModule) {
-    dlmmModule = await import('@meteora-ag/dlmm');
-  }
-  return dlmmModule;
-}
+import { loadDlmm } from '../lib/dlmm-sdk.js';
 
 const DRY_POOL = {
   poolAddress: 'DryRunPool1111111111111111111111111111111',
@@ -28,7 +20,7 @@ export async function getPoolInfo(poolAddress) {
     return { ...DRY_POOL, poolAddress };
   }
   const DLMM = await loadDlmm();
-  const pool = await DLMM.default.create(getConnection(), new PublicKey(poolAddress));
+  const pool = await DLMM.create(getConnection(), new PublicKey(poolAddress));
   const activeBin = await pool.getActiveBin();
   return {
     poolAddress,
@@ -47,7 +39,7 @@ export async function getActiveBin(poolAddress) {
     return { binId: DRY_POOL.activeBin, price: DRY_POOL.currentPrice };
   }
   const DLMM = await loadDlmm();
-  const pool = await DLMM.default.create(getConnection(), new PublicKey(poolAddress));
+  const pool = await DLMM.create(getConnection(), new PublicKey(poolAddress));
   const bin = await pool.getActiveBin();
   return { binId: bin.binId, price: Number(bin.price) };
 }
@@ -57,7 +49,7 @@ export async function listUserPositions(walletPubkey) {
     return [];
   }
   const DLMM = await loadDlmm();
-  const positions = await DLMM.default.getAllLbPairPositionsByUser(
+  const positions = await DLMM.getAllLbPairPositionsByUser(
     getConnection(),
     new PublicKey(walletPubkey)
   );
@@ -84,7 +76,7 @@ export async function deployPosition({ poolAddress, solAmount, mode, binRange })
   }
   const DLMM = await loadDlmm();
   const kp = getKeypair();
-  const pool = await DLMM.default.create(getConnection(), new PublicKey(poolAddress));
+  const pool = await DLMM.create(getConnection(), new PublicKey(poolAddress));
   const { minBinId, maxBinId } = binRange;
   const tx = await pool.initializePositionAndAddLiquidityByStrategy({
     positionPubKey: (await import('@solana/web3.js')).Keypair.generate().publicKey,
@@ -110,7 +102,7 @@ export async function closePosition(positionId, poolAddress) {
   }
   const DLMM = await loadDlmm();
   const kp = getKeypair();
-  const pool = await DLMM.default.create(getConnection(), new PublicKey(poolAddress));
+  const pool = await DLMM.create(getConnection(), new PublicKey(poolAddress));
   const tx = await pool.removeLiquidity({
     position: new PublicKey(positionId),
     user: kp.publicKey,

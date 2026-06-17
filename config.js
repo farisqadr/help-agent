@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
@@ -52,7 +52,9 @@ export function setDryRun(value) {
   try {
     const uc = JSON.parse(readFileSync(USER_CONFIG_PATH, 'utf8'));
     uc.dryRun = config.DRY_RUN;
-    writeFileSync(USER_CONFIG_PATH, JSON.stringify(uc, null, 2));
+    const tmp = `${USER_CONFIG_PATH}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(uc, null, 2));
+    renameSync(tmp, USER_CONFIG_PATH);
   } catch { /* config file optional */ }
   return config.DRY_RUN;
 }

@@ -4,6 +4,8 @@ import { passesRiskFilter } from './risk.js';
 import { getPoolBoost } from '../lib/hivemind.js';
 import { discoverPoolsLive } from './meteora-api.js';
 import { getHolderQuality } from './token.js';
+import { logScreening } from '../lib/logger.js';
+import { enrichPoolsWithMarketData, passesMarketFilter, getDexFilters } from './dexscreener.js';
 
 const DEFAULT_WEIGHTS = {
   volume24h: 0.3,
@@ -68,19 +70,25 @@ const DRY_POOLS = [
 
 export async function discoverPools() {
   if (isDryRun()) {
+    // Mock enrichment fills marketCap/volume/liquidity for the table + filters
+    // without altering the deterministic dry-run scoring factors.
+    await enrichPoolsWithMarketData(DRY_POOLS);
     return DRY_POOLS;
   }
   const live = await discoverPoolsLive(config.screening?.discoverLimit ?? 50);
   if (live?.length) {
-    const enriched = await Promise.all(live.map(async (pool) => {
+    // Real holder signal first (when Helius can provide one), then fill the
+    // remaining placeholder factors from DexScreener market data.
+    await Promise.all(live.map(async (pool) => {
       if (pool.tokenMint && pool.holderQuality === 0.5) {
         try {
-          pool.holderQuality = await getHolderQuality(pool.tokenMint);
-        } catch { /* keep default */ }
+          const hq = await getHolderQuality(pool.tokenMint);
+          if (hq != null) pool.holderQuality = hq;
+        } catch { /* fall back to market-derived proxy */ }
       }
-      return pool;
     }));
-    return enriched;
+    await enrichPoolsWithMarketData(live);
+    return live;
   }
   return DRY_POOLS;
 }
@@ -102,8 +110,57 @@ export function scorePool(pool, weights = getScreeningWeights()) {
   return { score, factors };
 }
 
-export async function getTopCandidates(limit = 10) {
+/**
+ * "Screen Now": immediately discover pools, apply risk/banned filters, score,
+ * and return top candidates. Does NOT deploy — purely populates the dashboard list.
+ */
+export async function screenNow(limit = config.screening?.topCandidatesLimit ?? 10) {
+  const weights = getScreeningWeights();
+  const dexFilters = getDexFilters();
   const pools = await discoverPools();
+
+  const rejected = [];
+  const scored = [];
+
+  for (const pool of pools) {
+    const risk = passesRiskFilter(pool);
+    if (!risk.pass) {
+      rejected.push({ poolAddress: pool.poolAddress, name: pool.name, reason: risk.reason });
+      continue;
+    }
+    if (dexFilters.enabled) {
+      const market = passesMarketFilter(pool, dexFilters);
+      if (!market.pass) {
+        rejected.push({ poolAddress: pool.poolAddress, name: pool.name, reason: market.reason });
+        continue;
+      }
+    }
+    const { score, factors } = scorePool(pool, weights);
+    const hiveBoost = await getPoolBoost(pool.poolAddress).catch(() => 0);
+    const total = score + hiveBoost;
+    scored.push({ ...pool, score: total, factors, hiveBoost });
+  }
+
+  scored.sort((a, b) => b.score - a.score);
+  const candidates = scored.slice(0, limit);
+  const timestamp = new Date().toISOString();
+
+  await logScreening({ candidates, rejected, timestamp }).catch(() => {});
+
+  return {
+    candidates,
+    rejected,
+    criteria: { weights },
+    discovered: pools.length,
+    matched: candidates.length,
+    timestamp,
+  };
+}
+
+export async function getTopCandidates(limit = 10) {
+  const dexFilters = getDexFilters();
+  const pools = await discoverPools();
+
   const rejected = [];
   const candidates = [];
 
@@ -112,6 +169,13 @@ export async function getTopCandidates(limit = 10) {
     if (!risk.pass) {
       rejected.push({ poolAddress: pool.poolAddress, reason: risk.reason });
       continue;
+    }
+    if (dexFilters.enabled) {
+      const market = passesMarketFilter(pool, dexFilters);
+      if (!market.pass) {
+        rejected.push({ poolAddress: pool.poolAddress, reason: market.reason });
+        continue;
+      }
     }
     const { score, factors } = scorePool(pool);
     const hiveBoost = await getPoolBoost(pool.poolAddress).catch(() => 0);

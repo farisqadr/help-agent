@@ -5,12 +5,16 @@ import { unlink, readFile } from 'node:fs/promises';
 const POSITIONS = 'positions.e2e-test.json';
 process.env.POSITIONS_PATH = POSITIONS;
 const { runDeterministicScreener, runDeterministicManager } = await import('../../agent.js');
+const { config } = await import('../../config.js');
 
 const SCREEN_LOG = 'logs/screening-log.json';
 
 before(async () => {
   await unlink(POSITIONS).catch(() => {});
   await unlink(SCREEN_LOG).catch(() => {});
+  // Make the cycle deterministic regardless of the live dashboard config.
+  config.deploy = { ...config.deploy, autoDeploy: true, autoDeploySol: null };
+  config.screening = { ...config.screening, dexscreener: { enabled: false } };
 });
 
 after(async () => {

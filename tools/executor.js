@@ -14,7 +14,6 @@ import { getTokenMetadata } from './token.js';
 
 const MAX_DEPLOY_PCT = config.deploy?.maxDeployPct ?? 0.25;
 const MIN_SOL_RESERVE = config.deploy?.minSolReserve ?? 0.05;
-const MIN_SCORE = config.screening?.minScore ?? 0.5;
 
 export async function executeTool(name, args = {}) {
   switch (name) {

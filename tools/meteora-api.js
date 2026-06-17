@@ -1,6 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 import { config, isDryRun } from '../config.js';
 import { getConnection } from './rpc.js';
+import { loadDlmm } from '../lib/dlmm-sdk.js';
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112';
 
@@ -45,8 +46,8 @@ async function fetchFromApi() {
 
 async function fetchFromRpc(limit = 50) {
   if (!config.HELIUS_RPC_URL) return null;
-  const DLMM = await import('@meteora-ag/dlmm');
-  const pairs = await DLMM.default.getLbPairs(getConnection());
+  const DLMM = await loadDlmm();
+  const pairs = await DLMM.getLbPairs(getConnection());
   const solPairs = pairs.filter(({ account }) => {
     const x = account.tokenXMint.toBase58();
     const y = account.tokenYMint.toBase58();

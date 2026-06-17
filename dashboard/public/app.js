@@ -7,9 +7,18 @@ const PROTECTED_DEFAULTS = [
   'Lending/Borrowing',
 ];
 
-const WEIGHT_KEYS = ['volume24h', 'feeApr', 'volatility', 'holderQuality', 'binUtilization'];
-
 const state = { config: null, candidates: [] };
+
+// Pool addresses the user dismissed from the candidate list (persisted locally).
+const DISMISSED_KEY = 'help.dismissedCandidates';
+function loadDismissed() {
+  try { return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+let dismissed = loadDismissed();
+function saveDismissed() {
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify([...dismissed]));
+}
 
 // ---------- helpers ----------
 async function api(path, opts = {}) {
@@ -35,6 +44,27 @@ function toast(msg, kind = 'ok') {
 const $ = (id) => document.getElementById(id);
 const fmt = (n, d = 4) => (n == null || Number.isNaN(Number(n)) ? '—' : Number(n).toFixed(d));
 const shortAddr = (a) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : '—');
+const usd = (n) => {
+  if (n == null || Number.isNaN(Number(n))) return '—';
+  const v = Number(n);
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
+  return `$${v.toFixed(0)}`;
+};
+const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const EXTERNAL_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+const meteoraPoolUrl = (addr) => (addr ? `https://app.meteora.ag/dlmm/${addr}` : null);
+
+async function copyText(text, label = 'Copied') {
+  if (!text) return toast('Nothing to copy', 'err');
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(label);
+  } catch {
+    toast('Copy failed', 'err');
+  }
+}
 const timeAgo = (iso) => {
   if (!iso) return 'never';
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -56,7 +86,10 @@ document.querySelectorAll('.nav-item').forEach((btn) => {
 // ---------- overview ----------
 async function loadOverview() {
   const s = await api('/api/status');
-  $('ov-balance').textContent = `${fmt(s.balance?.sol)} SOL`;
+  const bal = s.balance ?? {};
+  $('ov-balance').textContent = bal.sol == null
+    ? '—'
+    : `${fmt(bal.sol)} SOL${bal.watchOnly ? ' · watch' : ''}`;
   $('ov-positions').textContent = s.openPositions;
   $('ov-rpc').textContent = s.rpc?.ok ? `slot ${s.rpc.slot}` : 'down';
   $('ov-mode').textContent = s.dryRun ? 'DRY RUN' : 'LIVE';
@@ -83,9 +116,60 @@ async function loadNetwork() {
 }
 
 function renderWallet(w) {
-  $('wal-status').textContent = w.hasKey ? (w.pubkey ? 'configured' : 'invalid key') : 'none';
-  $('wal-pubkey').textContent = w.pubkey ? shortAddr(w.pubkey) : '—';
+  const sourceLabel = { imported: 'imported key', solflare: 'Solflare connected', none: 'none' }[w.source] ?? 'none';
+  $('wal-status').textContent = w.hasKey && !w.pubkey ? 'invalid key' : sourceLabel;
+  $('wal-cantrade').textContent = w.canTrade ? 'yes — can trade' : 'no — import key to trade';
+  const addr = w.pubkey || w.connectedAddress;
+  $('wal-pubkey').textContent = addr ? shortAddr(addr) : '—';
+
+  // Connect/Disconnect are mutually exclusive based on connection state.
+  const connected = Boolean(w.connectedAddress || w.pubkey);
+  $('btn-solflare').classList.toggle('hidden', connected);
+  $('btn-solflare-disc').classList.toggle('hidden', !connected);
+
+  // Remove key only makes sense when a signing key is stored.
+  $('btn-wal-remove').classList.toggle('hidden', !w.hasKey);
+  $('btn-wal-test').classList.toggle('hidden', !addr);
 }
+
+async function connectSolflare() {
+  const provider = window.solflare || (window.solana?.isSolflare ? window.solana : null);
+  if (!provider) {
+    toast('Solflare not detected. Install the Solflare extension.', 'err');
+    window.open('https://solflare.com/', '_blank');
+    return;
+  }
+  try {
+    await provider.connect();
+    const pubkey = (provider.publicKey ?? window.solana?.publicKey)?.toString();
+    if (!pubkey) throw new Error('Solflare did not return a public key');
+    const w = await api('/api/wallet/connect', { method: 'POST', body: { pubkey } });
+    renderWallet(w);
+    await refreshAfterWalletChange();
+    toast(`Solflare connected · ${shortAddr(pubkey)}`);
+  } catch (e) {
+    toast(e.message || 'Solflare connection failed', 'err');
+  }
+}
+
+// Connecting/disconnecting/importing changes the active address — refresh the
+// Overview balance and mode-scoped performance charts to match.
+async function refreshAfterWalletChange() {
+  await loadOverview().catch(() => {});
+  window.refreshCharts?.();
+}
+
+$('btn-solflare').addEventListener('click', connectSolflare);
+$('btn-solflare-disc').addEventListener('click', async () => {
+  try {
+    const provider = window.solflare || window.solana;
+    if (provider?.disconnect) await provider.disconnect().catch(() => {});
+    const w = await api('/api/wallet/disconnect', { method: 'POST' });
+    renderWallet(w);
+    await refreshAfterWalletChange();
+    toast('Solflare disconnected');
+  } catch (e) { toast(e.message, 'err'); }
+});
 
 $('mode-toggle').addEventListener('change', async (e) => {
   const wantMainnet = e.target.checked;
@@ -97,6 +181,7 @@ $('mode-toggle').addEventListener('change', async (e) => {
     await api('/api/mode', { method: 'POST', body: { dryRun: !wantMainnet } });
     toast(wantMainnet ? 'Switched to MAINNET' : 'Switched to DRY RUN', wantMainnet ? 'err' : 'ok');
     await loadOverview();
+    window.refreshCharts?.();
   } catch (err) {
     toast(err.message, 'err');
     await loadNetwork();
@@ -110,6 +195,7 @@ $('btn-wal-save').addEventListener('click', async () => {
     const w = await api('/api/wallet', { method: 'POST', body: { privateKey: key } });
     $('wal-key').value = '';
     renderWallet(w);
+    await refreshAfterWalletChange();
     toast(`Wallet saved · ${shortAddr(w.pubkey)}`);
   } catch (e) { toast(e.message, 'err'); }
 });
@@ -119,7 +205,7 @@ $('btn-wal-remove').addEventListener('click', async () => {
   try {
     const w = await api('/api/wallet', { method: 'DELETE' });
     renderWallet(w);
-    await loadNetwork();
+    await refreshAfterWalletChange();
     toast('Wallet removed');
   } catch (e) { toast(e.message, 'err'); }
 });
@@ -168,24 +254,6 @@ async function loadConfig() {
 
 function bindScreening() {
   const c = state.config;
-  const weights = c.screening?.weights ?? {};
-  const box = $('weights');
-  box.innerHTML = '';
-  WEIGHT_KEYS.forEach((k) => {
-    const v = Math.round((weights[k] ?? 0) * 100);
-    const row = document.createElement('div');
-    row.className = 'weight-row';
-    row.innerHTML = `<label>${k}</label>
-      <input type="range" min="0" max="100" value="${v}" data-w="${k}" />
-      <span class="wval" data-wv="${k}">${v}%</span>`;
-    box.appendChild(row);
-  });
-  box.querySelectorAll('input[type=range]').forEach((inp) => {
-    inp.addEventListener('input', () => {
-      box.querySelector(`[data-wv="${inp.dataset.w}"]`).textContent = `${inp.value}%`;
-    });
-  });
-  $('sc-minScore').value = c.screening?.minScore ?? 0.5;
   $('sc-top').value = c.screening?.topCandidatesLimit ?? 10;
   $('sc-discover').value = c.screening?.discoverLimit ?? 50;
   $('sc-screenInt').value = c.screeningIntervalMin ?? 30;
@@ -195,7 +263,35 @@ function bindScreening() {
   $('dp-auto').checked = c.deploy?.autoDeploy !== false;
   $('dp-sol').value = c.deploy?.autoDeploySol ?? '';
   $('dp-pct').value = c.deploy?.maxDeployPct ?? 0.25;
+
+  const dx = c.screening?.dexscreener ?? {};
+  $('dx-enabled').checked = Boolean(dx.enabled);
+  $('dx-minmc').value = dx.minMarketCapUsd ?? 0;
+  $('dx-maxmc').value = dx.maxMarketCapUsd ?? 0;
+  $('dx-minvol').value = dx.minVolume24hUsd ?? 0;
+  $('dx-minliq').value = dx.minLiquidityUsd ?? 0;
 }
+
+$('btn-save-dex').addEventListener('click', async () => {
+  try {
+    state.config = await api('/api/config', {
+      method: 'PUT',
+      body: {
+        screening: {
+          dexscreener: {
+            enabled: $('dx-enabled').checked,
+            minMarketCapUsd: Number($('dx-minmc').value || 0),
+            maxMarketCapUsd: Number($('dx-maxmc').value || 0),
+            minVolume24hUsd: Number($('dx-minvol').value || 0),
+            minLiquidityUsd: Number($('dx-minliq').value || 0),
+          },
+        },
+      },
+    });
+    bindScreening();
+    toast('DexScreener market filters saved');
+  } catch (e) { toast(e.message, 'err'); }
+});
 
 $('btn-save-deploy').addEventListener('click', async () => {
   try {
@@ -215,10 +311,6 @@ $('btn-save-deploy').addEventListener('click', async () => {
 });
 
 $('btn-save-screening').addEventListener('click', async () => {
-  const weights = {};
-  document.querySelectorAll('#weights input[type=range]').forEach((inp) => {
-    weights[inp.dataset.w] = Number(inp.value);
-  });
   try {
     state.config = await api('/api/config', {
       method: 'PUT',
@@ -226,8 +318,6 @@ $('btn-save-screening').addEventListener('click', async () => {
         screeningIntervalMin: Number($('sc-screenInt').value),
         managementIntervalMin: Number($('sc-manageInt').value),
         screening: {
-          weights,
-          minScore: Number($('sc-minScore').value),
           topCandidatesLimit: Number($('sc-top').value),
           discoverLimit: Number($('sc-discover').value),
           poolListUrl: $('sc-poolUrl').value.trim(),
@@ -246,33 +336,113 @@ $('btn-run-screen').addEventListener('click', async () => {
   catch (e) { toast(e.message, 'err'); }
 });
 
-async function loadCandidates() {
-  const data = await api('/api/candidates');
-  state.candidates = data.candidates ?? [];
+let lastCandidateData = null;
+function renderCandidates(data) {
+  lastCandidateData = data;
+  state.candidates = (data.candidates ?? []).filter((c) => !dismissed.has(c.poolAddress));
   const tbody = document.querySelector('#cand-table tbody');
   tbody.innerHTML = '';
   if (!state.candidates.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty">No candidates. Run screening.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">No candidates. Adjust the market filters and Screen Now.</td></tr>';
   }
   state.candidates.forEach((c, i) => {
+    const vol = c.volume24hUsd ?? c.volume24h;
+    const meteora = meteoraPoolUrl(c.poolAddress);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><b>${c.name ?? '—'}</b><br><span class="mono">${shortAddr(c.poolAddress)}</span></td>
+      <td>
+        <div class="pool-cell">
+          <div class="pool-head">
+            <b>${c.name ?? '—'}</b>
+            ${meteora ? `<a href="${meteora}" target="_blank" rel="noopener noreferrer" class="icon-link" title="View on Meteora">${EXTERNAL_SVG}</a>` : ''}
+          </div>
+          <div class="pool-row mono">
+            <span class="muted">pool</span> ${shortAddr(c.poolAddress)}
+            <button type="button" class="btn-icon" data-copy-pool="${i}" title="Copy pool address">${COPY_SVG}</button>
+          </div>
+          ${c.tokenMint ? `<div class="pool-row mono">
+            <span class="muted">token</span> ${shortAddr(c.tokenMint)}
+            <button type="button" class="btn-icon" data-copy-token="${i}" title="Copy token address">${COPY_SVG}</button>
+          </div>` : ''}
+        </div>
+      </td>
       <td>${fmt(c.score, 3)}</td>
-      <td>${c.volume24h ? '$' + Number(c.volume24h).toLocaleString() : '—'}</td>
+      <td>${usd(c.marketCap)}</td>
+      <td>${usd(vol)}</td>
+      <td>${usd(c.liquidityUsd)}</td>
       <td>${fmt((c.feeApr ?? 0) * 100, 1)}%</td>
-      <td>${fmt(c.volatility, 2)}</td>
-      <td><button class="btn btn-sm btn-primary" data-deploy="${i}">Deploy</button></td>`;
+      <td class="row-actions">
+        <button class="btn btn-sm btn-primary" data-deploy="${i}">Deploy</button>
+        <button class="btn btn-sm btn-danger" data-dismiss="${i}" title="Remove from list">×</button>
+      </td>`;
     tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('[data-copy-pool]').forEach((b) => {
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const c = state.candidates[Number(b.dataset.copyPool)];
+      copyText(c?.poolAddress, 'Pool address copied');
+    });
+  });
+  tbody.querySelectorAll('[data-copy-token]').forEach((b) => {
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const c = state.candidates[Number(b.dataset.copyToken)];
+      copyText(c?.tokenMint, 'Token address copied');
+    });
   });
   tbody.querySelectorAll('[data-deploy]').forEach((b) => {
     b.addEventListener('click', () => prefillDeploy(state.candidates[Number(b.dataset.deploy)]));
   });
-  $('cand-meta').textContent = `${state.candidates.length} candidates`;
+  tbody.querySelectorAll('[data-dismiss]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const c = state.candidates[Number(b.dataset.dismiss)];
+      if (!c?.poolAddress) return;
+      dismissed.add(c.poolAddress);
+      saveDismissed();
+      renderCandidates(lastCandidateData);
+      toast(`Removed ${c.name ?? shortAddr(c.poolAddress)}`);
+    });
+  });
+
+  const parts = [`${state.candidates.length} shown`];
+  if (data.discovered != null) parts.push(`${data.discovered} discovered`);
+  if (dismissed.size) parts.push(`${dismissed.size} hidden`);
+  $('cand-meta').textContent = parts.join(' · ');
+
   $('rejected-meta').textContent = (data.rejected?.length)
     ? `Rejected by protection: ${data.rejected.map((r) => `${shortAddr(r.poolAddress)} (${r.reason})`).join(', ')}`
     : '';
 }
+
+async function loadCandidates() {
+  renderCandidates(await api('/api/candidates'));
+}
+
+$('btn-refresh-cand').addEventListener('click', async () => {
+  const btn = $('btn-refresh-cand');
+  btn.disabled = true;
+  try { await loadCandidates(); toast('Candidates refreshed'); }
+  catch (e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; }
+});
+
+$('btn-screen-now').addEventListener('click', async () => {
+  const btn = $('btn-screen-now');
+  btn.disabled = true;
+  btn.textContent = 'Screening…';
+  toast('Screening now…');
+  try {
+    const data = await api('/api/screen-now', { method: 'POST' });
+    renderCandidates(data);
+    toast(`Found ${data.matched} candidate(s) from ${data.discovered} pools`);
+  } catch (e) {
+    toast(e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Screen Now';
+  }
+});
 
 function prefillDeploy(c) {
   $('op-pool').value = c.poolAddress ?? '';

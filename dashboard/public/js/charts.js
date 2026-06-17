@@ -54,6 +54,9 @@ async function initCharts() {
 
 initCharts().catch(console.error);
 
+// Allow the main app (mode switch, wallet connect) to refresh performance.
+window.refreshCharts = () => initCharts().catch(console.error);
+
 const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
 const ws = new WebSocket(`${proto}//${location.host}`);
 ws.addEventListener('message', (evt) => {

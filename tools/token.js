@@ -1,4 +1,15 @@
-import { isDryRun } from '../config.js';
+import { config, isDryRun } from '../config.js';
+
+// The Helius API key lives inside the RPC URL (…/?api-key=XXX). Reuse it for the
+// data API rather than relying on a separate (often-unset) env var.
+function heliusApiKey() {
+  if (process.env.HELIUS_API_KEY) return process.env.HELIUS_API_KEY;
+  try {
+    return new URL(config.HELIUS_RPC_URL).searchParams.get('api-key') ?? '';
+  } catch {
+    return '';
+  }
+}
 
 export async function getTokenMetadata(mint) {
   if (isDryRun()) {
@@ -11,7 +22,11 @@ export async function getTokenMetadata(mint) {
       holderCount: 1000,
     };
   }
-  const res = await fetch(`https://api.helius.xyz/v0/token-metadata?api-key=${process.env.HELIUS_API_KEY ?? ''}`, {
+  const apiKey = heliusApiKey();
+  if (!apiKey) {
+    return { mint, name: 'Unknown', symbol: 'UNK', categories: [], holderCount: 0 };
+  }
+  const res = await fetch(`https://api.helius.xyz/v0/token-metadata?api-key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mintAccounts: [mint] }),
@@ -31,9 +46,15 @@ export async function getTokenMetadata(mint) {
   };
 }
 
+/**
+ * Maps real holder count to a 0–1 quality score. Returns null when no real
+ * holder count is available so callers can fall back to a market-derived proxy
+ * instead of trusting a fabricated default.
+ */
 export async function getHolderQuality(mint) {
   const meta = await getTokenMetadata(mint);
-  const count = meta.holderCount ?? 0;
+  const count = Number(meta.holderCount ?? 0);
+  if (!count) return null;
   if (count >= 1000) return 1.0;
   if (count >= 500) return 0.7;
   if (count >= 100) return 0.4;
