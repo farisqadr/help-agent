@@ -1,6 +1,6 @@
 # HELP Agent — Greenfield Master Plan (Implemented)
 
-> **Status:** Implemented 2026-06-17. All code phases (0–5) complete in this repository. Phase 6.2 (live DNS/Coolify deploy) is an operator task.
+> **Status:** Implemented 2026-06-17. All code phases (0–5) complete in this repository. Phase 6.2 (live DNS/Coolify deploy) is an operator task. Post-roadmap: DexScreener market enrichment (TODO 2.3) shipped same day.
 
 **Goal:** Build HELP entirely within `farisqadr/help-agent`, deployed at **help.xflow.id**.
 
@@ -9,10 +9,10 @@
 | Phase | Status | Key paths |
 |-------|--------|-----------|
 | 0 Bootstrap | Done | `package.json`, `config.js`, `Dockerfile`, `docker-compose.yml` |
-| 1 Foundation | Done | `tools/rpc.js`, `tools/dlmm.js`, `tools/wallet.js`, `setup.js` |
-| 2 Screener | Done | `tools/risk.js`, `tools/screening.js`, `tools/meteora-api.js` (live discovery) |
+| 1 Foundation | Done | `tools/rpc.js`, `tools/dlmm.js`, `lib/dlmm-sdk.js`, `tools/wallet.js`, `setup.js` |
+| 2 Screener | Done | `tools/risk.js`, `tools/screening.js`, `tools/meteora-api.js`, `tools/dexscreener.js` |
 | 3 Entry | Done | `lib/bins.js`, `state.js`, deploy in `tools/executor.js` |
-| 4 Monitor/Exit | Done | `lib/evaluator.js`, close + Jupiter swap, `dashboard/` |
+| 4 Monitor/Exit | Done | `lib/evaluator.js`, `lib/daemon.js`, `lib/cycles.js`, close + Jupiter swap, `dashboard/` |
 | 5 Self-learning | Done | `lib/pnl-analysis.js`, `lib/feedback-loop.js`, `lib/hivemind.js`, `tools/study.js`, charts |
 | 6 Deploy | Config ready | `deploy/coolify.md`, Dockerfile HEALTHCHECK |
 
@@ -20,7 +20,7 @@
 
 ```bash
 npm install
-DRY_RUN=true npm test          # 39 tests
+DRY_RUN=true npm test          # 72 tests (28 suites)
 DRY_RUN=true node cli.js status
 DRY_RUN=true node cli.js screen
 ```

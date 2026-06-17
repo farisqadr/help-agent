@@ -19,7 +19,7 @@
       "minVolume24hUsd": 1000000,
       "minLiquidityUsd": 0
     },
-    "lastTunedAt": "2026-06-17T04:12:59.288Z"
+    "lastTunedAt": "2026-06-17T05:59:10.978Z"
   },
   "deploy": {
     "maxDeployPct": 0.25,

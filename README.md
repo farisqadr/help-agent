@@ -30,7 +30,7 @@ SCREEN → DEPLOY → MANAGE → CLOSE
 
 | Stage | Description | Cadence |
 |-------|-------------|---------|
-| **SCREEN** | Discover pools, apply risk filters, score candidates | Configurable (`screeningIntervalMin`) |
+| **SCREEN** | Discover pools, apply risk filters, enrich with DexScreener market data, score candidates | Configurable (`screeningIntervalMin`) |
 | **DEPLOY** | Select the best candidate, calculate bins, deploy SOL | After screening when criteria are met |
 | **MANAGE** | Monitor open positions; evaluate TP, SL, and trailing stops | Configurable (`managementIntervalMin`) |
 | **CLOSE** | Withdraw liquidity and auto-swap proceeds to SOL | On exit signal |
@@ -56,9 +56,13 @@ Built-in screening rejects pools in high-risk categories:
 
 Additional custom keyword blacklists can be configured via JSON.
 
-### Self-Learning (ZVec Memory)
+### DexScreener Market Filters (Optional)
 
-HELP integrates **ZVec-style** pattern memory (vector + full-text hybrid search) to retain trade patterns across sessions. Trade outcomes feed a feedback loop that auto-adjusts screening weights and HiveMind pool insights.
+When enabled in `user-config.json` (`screening.dexscreener.enabled`), screening enriches candidates with live market cap, 24h volume, and liquidity from the [DexScreener API](https://dexscreener.com). Pools below configured thresholds are rejected; surviving pools use real market metrics for scoring instead of placeholders. Filters are editable from the dashboard **Screening** tab.
+
+### Self-Learning (Pattern Memory)
+
+HELP uses **ZVec-style** pattern memory (cosine similarity + full-text hybrid search over `data/zvec/patterns.json`) to retain trade patterns across sessions. Trade outcomes feed a feedback loop that auto-adjusts screening weights and HiveMind pool insights.
 
 ---
 
@@ -68,7 +72,7 @@ HELP integrates **ZVec-style** pattern memory (vector + full-text hybrid search)
 ┌─────────────────────────────────────────────────────────────┐
 │                     HELP Agent (help-agent)                  │
 │  ┌───────────────────────────────────────────────────────┐  │
-│  │              Daemon (index.js)                         │  │
+│  │              Daemon (index.js + lib/daemon.js)          │  │
 │  │   Cron · Screening · Management · Dashboard            │  │
 │  └────────────┬──────────────────────────┬───────────────┘  │
 │               │                          │                   │
@@ -81,13 +85,14 @@ HELP integrates **ZVec-style** pattern memory (vector + full-text hybrid search)
 │               │                         │                    │
 │          LLM (ReAct)            Tool Executor                │
 │          SCREENER / MANAGER       dlmm · screening           │
-│          / GENERAL                wallet · token · study     │
+│          / GENERAL                dexscreener · wallet       │
+│                                   token · study              │
 │               │                         │                    │
 │               └────────────┬────────────┘                    │
 │                            ▼                                 │
 │              ┌─────────────────────────┐                     │
 │              │      On-Chain Ops       │                     │
-│              │  Helius RPC · Jupiter API │                     │
+│              │  Helius RPC · Jupiter · DexScreener     │                     │
 │              │      Meteora DLMM SDK   │                     │
 │              └─────────────────────────┘                     │
 └─────────────────────────────────────────────────────────────┘
@@ -107,7 +112,7 @@ HELP integrates **ZVec-style** pattern memory (vector + full-text hybrid search)
 
 ### 1. Screening
 
-On each screening cycle, the agent queries Meteora pool data via Helius RPC, applies category and keyword risk filters, scores surviving candidates, and logs decisions. The top candidate is evaluated against deployment criteria.
+On each screening cycle, the agent queries Meteora pool data (via datapi or dry-run mocks), applies category and keyword risk filters, optionally enriches candidates with DexScreener market data, scores surviving pools, and logs decisions. HiveMind pool boosts and pattern-memory context can influence candidate selection. The top candidate is evaluated against deployment criteria.
 
 ### 2. Deployment
 
@@ -134,7 +139,8 @@ All stages run inside a ReAct loop where an LLM orchestrates tool calls with bui
 | **RPC** | [Helius](https://helius.dev) | Solana mainnet |
 | **Swap** | [Jupiter API v6](https://jup.ag) | `quote-api.jup.ag/v6` |
 | **LLM** | OpenAI-compatible endpoint | Custom routing endpoint |
-| **Vector DB** | ZVec v0.5.0 | Embedded FTS + hybrid vector search |
+| **Pattern memory** | ZVec-style (`tools/study.js`) | JSON store + cosine + FTS hybrid search |
+| **Market data** | [DexScreener API](https://dexscreener.com) | Optional screening enrichment (no API key) |
 | **Dashboard** | Express + WebSocket | Vanilla HTML/CSS/JS SPA |
 | **Scripts** | Python 3.11 | Watchdog utilities |
 | **Deploy** | Coolify v4.1.0 | Traefik proxy with auto-SSL |
@@ -199,7 +205,7 @@ curl -s http://localhost:4321/api/status
 
 ### User Config
 
-Runtime behavior (intervals, strategy defaults, risk keywords, TP/SL thresholds) is controlled via `user-config.json`. See [HELP-MRD.md](./HELP-MRD.md) for the full configuration reference.
+Runtime behavior (intervals, strategy defaults, risk keywords, TP/SL thresholds, DexScreener filters) is controlled via `user-config.json`. See [HELP-MRD.md](./HELP-MRD.md) for the full configuration reference.
 
 ### Security Best Practices
 
@@ -248,11 +254,11 @@ See [deploy/coolify.md](./deploy/coolify.md) for persistent volumes, health chec
 |-------|--------|------------|
 | **Phase 0 — Bootstrap** | ✅ Complete | Node.js ESM project, config, Dockerfile |
 | **Phase 1 — Foundation** | ✅ Complete | RPC, Meteora DLMM SDK, wallet encryption |
-| **Phase 2 — Risk Engine & Screener** | ✅ Complete | Risk filters, pool scoring, decision logging |
+| **Phase 2 — Risk Engine & Screener** | ✅ Complete | Risk filters, pool scoring, decision logging, DexScreener enrichment |
 | **Phase 3 — Entry Execution** | ✅ Complete | SPOT/CURVE/BID-ASK bins, deployPosition, auto-range |
 | **Phase 4 — Monitoring & Exit** | ✅ Complete | Position monitor, TP/SL/trailing, close + Jupiter swap |
-| **Phase 5 — Self-Learning** | ✅ Complete | PnL analysis, ZVec memory, feedback loop, charts, HiveMind |
-| **Phase 6 — Deployment** | 🔄 Operator | Coolify config ready; DNS + live deploy pending |
+| **Phase 5 — Self-Learning** | ✅ Complete | PnL analysis, pattern memory, feedback loop, charts, HiveMind |
+| **Phase 6 — Deployment** | 🔄 Operator | Coolify config ready; DNS + live deploy pending (TODO 6.2) |
 
 ---
 

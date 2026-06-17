@@ -3,7 +3,7 @@
 **Document Purpose:** Master Reference Document (MRD) untuk AI Agent. Dokumen ini adalah *single source of truth* untuk memulihkan konteks development secara cepat. Jika Anda adalah AI Developer yang membaca ini, gunakan status `[TODO]` untuk melacak progres saat ini.
 
 **Project:** HELP (Hermes Liquidity Provider) — Autonomous LP agent for Meteora DLMM on Solana.
-**Public Repo:** `farisqadr/help-agent` → **help.xflow.id** (via Coolify + Traefik)
+# **Public Repo:** `farisqadr/help-agent` → **help.xflow.id** (via Coolify + Traefik)
 **Engine:** This repository (consolidated greenfield build)
 **Last Updated:** 2026-06-17
 
@@ -20,7 +20,8 @@ HELP adalah public-facing brand dari autonomous agent yang manage liquidity posi
 | **Deployment** | Coolify v4.1.0 → Traefik SSL → help.xflow.id |
 | **RPC** | Helius |
 | **Swap** | Jupiter API v6 |
-| **Memory** | ZVec v0.5.0 (vector + FTS hybrid) |
+| **Memory** | ZVec-style pattern store (`data/zvec/`, vector + FTS hybrid) |
+| **Market data** | DexScreener API (optional screening filters + real scoring factors) |
 
 ### Core Flow
 
@@ -30,7 +31,7 @@ SCREEN → DEPLOY → MANAGE → CLOSE
 
 | Function | What It Does | Frequency |
 |----------|-------------|-----------|
-| **SCREEN** | Discovery + risk filter + score pools | Configurable (screeningIntervalMin) |
+| **SCREEN** | Discovery + risk filter + DexScreener market data + score pools | Configurable (screeningIntervalMin) |
 | **DEPLOY** | Pick best candidate, calculate bins, deploy SOL | After screening if criteria met |
 | **MANAGE** | Monitor open positions, TP/SL/trailing checks | Configurable (managementIntervalMin) |
 | **CLOSE** | Withdraw liquidity + auto-swap to SOL | On TP/SL/trailing signal |
@@ -53,11 +54,12 @@ Auto-reject pools with categories: Gambling, Porn/NSFW, Prediction Market, Perpe
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                   index.js (Daemon)                  │
-│    REPL + Cron + Telegram + PnL Poller + Briefing   │
+│              index.js + lib/daemon.js                │
+│         Cron · Dashboard · Screening · Manage        │
 └──────────┬─────────────────────────┬────────────────┘
            │                         │
     runScreeningCycle          runManagementCycle
+    (lib/cycles.js)            (lib/cycles.js)
            │                         │
            └──────────┬──────────────┘
                       ▼
@@ -65,19 +67,21 @@ Auto-reject pools with categories: Gambling, Porn/NSFW, Prediction Market, Perpe
                 ┌─────────┴──────────┐
                 │                    │
            LLM (ReAct)        Tool Executor
-           ┌────┴────┐       ┌──────┴──────┐
-           │SCREENER │       │  dlmm.js    │
-           │MANAGER  │       │ screening.js│
-           │GENERAL  │       │ wallet.js   │
-           └─────────┘       │ token.js    │
-                              │ study.js    │
-                              └──────┬──────┘
+           ┌────┴────┐       ┌──────┴──────────┐
+           │SCREENER │       │  dlmm.js        │
+           │MANAGER  │       │ screening.js    │
+           │GENERAL  │       │ dexscreener.js  │
+           └─────────┘       │ wallet.js       │
+                              │ token.js        │
+                              │ study.js        │
+                              └──────┬──────────┘
                                      ▼
                           ┌──────────────────┐
                           │  On-Chain Ops    │
                           │  Helius RPC      │
                           │  Jupiter API     │
                           │  Meteora SDK     │
+                          │  DexScreener API │
                           └──────────────────┘
 ```
 
@@ -85,19 +89,34 @@ Auto-reject pools with categories: Gambling, Porn/NSFW, Prediction Market, Perpe
 
 | File | Purpose |
 |------|---------|
-| `index.js` | Daemon entry — cron, REPL, Telegram, cycles |
+| `index.js` | Daemon entry — starts dashboard + background cycles |
 | `cli.js` | CLI interface — all tools as subcommands |
 | `agent.js` | ReAct loop — LLM + tool orchestration |
 | `config.js` | Config loader from `user-config.json` |
 | `prompt.js` | System prompts per role (SCREENER/MANAGER/GENERAL) |
 | `state.js` | Position state machine + PnL tracking |
-| `tools/definitions.js` | 40+ tool schemas (OpenAI format) |
+| `lib/daemon.js` | Cron scheduler for screening/management intervals |
+| `lib/cycles.js` | `runScreeningCycle`, `runManagementCycle` |
+| `lib/evaluator.js` | TP / SL / trailing-stop evaluation |
+| `lib/bins.js` | SPOT / CURVE / BID-ASK bin calculation |
+| `lib/pnl-analysis.js` | Post-trade actual vs expected PnL analysis |
+| `lib/feedback-loop.js` | Auto-adjust screening weights from trade history |
+| `lib/hivemind.js` | Cross-agent pool insight store (`hivemind-insights.json`) |
+| `lib/trade-history.js` | Append/read closed trade records |
+| `lib/config-store.js` | Patch `user-config.json` (incl. DexScreener filters) |
+| `lib/dlmm-sdk.js` | Lazy Meteora SDK loader with ESM interop |
+| `tools/definitions.js` | Tool schemas (OpenAI format) |
 | `tools/executor.js` | Tool executor + safety checks |
-| `tools/dlmm.js` | Meteora DLMM SDK wrapper (lazy-load) |
-| `tools/screening.js` | Pool discovery + scoring |
+| `tools/dlmm.js` | Meteora DLMM operations (deploy, close, pool info) |
+| `tools/screening.js` | Pool discovery, scoring, HiveMind boost |
+| `tools/dexscreener.js` | Market cap / volume / liquidity enrichment + filters |
+| `tools/meteora-api.js` | Live pool discovery from Meteora datapi |
+| `tools/risk.js` | Category + keyword risk filter |
 | `tools/wallet.js` | Balances + Jupiter swap |
-| `tools/token.js` | Token metadata + holders |
-| `dashboard/` | Express SPA (port 4321) |
+| `tools/token.js` | Token metadata + holder quality |
+| `tools/study.js` | ZVec-style pattern memory (`storeTradePattern`, `searchSimilarPatterns`) |
+| `dashboard/` | Express + WebSocket SPA (port 4321) |
+| `data/zvec/patterns.json` | Persisted trade pattern vectors |
 
 ---
 
@@ -133,7 +152,7 @@ WALLET_PRIVATE_KEY=xxx  # encrypted via setup.js
 
 ## 4. DEVELOPMENT TRACKER (TODOs)
 
-*AI Developer: Saat memulai sesi, tanyakan kepada User nomor TODO mana yang saat ini sedang dikerjakan untuk melanjutkan konteks.*
+*AI Developer: Phases 0–5 are code-complete (2026-06-17). Only **TODO 6.2** (operator deploy) remains. Use §5 Context Recovery for session bootstrap.*
 
 ### Phase 0: Bootstrap
 - [x] **TODO 0.1:** Init Node.js ESM project, package.json, Dockerfile — 2026-06-17
@@ -145,8 +164,8 @@ WALLET_PRIVATE_KEY=xxx  # encrypted via setup.js
 
 ### Phase 2: Risk Engine & Screener
 - [x] **TODO 2.1:** Risk filter — banned categories + keywords — 2026-06-17
-- [x] **TODO 2.2:** Pool scoring + `getTopCandidates` — 2026-06-17
-- [x] **TODO 2.3:** Screening log + decision log (JSON files) — 2026-06-17
+- [x] **TODO 2.2:** Screening log + decision log (JSON files) — 2026-06-17
+- [x] **TODO 2.3:** DexScreener market data enrichment + configurable filters — 2026-06-17
 
 ### Phase 3: Entry Execution
 - [x] **TODO 3.1:** SPOT / CURVE / BID_ASK bin calculation — 2026-06-17
@@ -162,7 +181,7 @@ WALLET_PRIVATE_KEY=xxx  # encrypted via setup.js
 ### Phase 5: Self-Learning & Optimization
 
 - [x] **TODO 5.1** Post-trade PnL analysis — 2026-06-17
-- [x] **TODO 5.2** ZVec memory integration — 2026-06-17
+- [x] **TODO 5.2** ZVec-style memory integration (`tools/study.js`, `data/zvec/`) — 2026-06-17
 - [x] **TODO 5.3** Feedback loop → auto-adjust weights — 2026-06-17
 - [x] **TODO 5.4** Dashboard live charts — 2026-06-17
 - [x] **TODO 5.5** HiveMind cross-agent learning — 2026-06-17
@@ -178,9 +197,10 @@ WALLET_PRIVATE_KEY=xxx  # encrypted via setup.js
 Jika Anda (AI) baru saja di-*reset* atau kehilangan konteks, ikuti prosedur ini sebelum menulis kode:
 
 1. **Acknowledge:** Konfirmasi bahwa Anda telah membaca MRD ini.
-2. **Locate:** Tanyakan kepada user: *"Kita sedang di Phase berapa dan TODO nomor berapa?"*
-3. **Review State:** Minta user menempelkan kode terakhir yang dikerjakan (atau error terakhir) agar konteks tetap terjaga.
-4. **Execute:** Lanjutkan development dengan mengacu pada blueprint arsitektur di atas dan file structure yang ada.
+2. **Current state (2026-06-17):** Phases 0–5 **code-complete** in this repo. Remaining work is **TODO 6.2** (operator: DNS + Coolify live deploy at help.xflow.id). Recent additions: DexScreener screening (`tools/dexscreener.js`), dashboard market-filter UI, `lib/dlmm-sdk.js` ESM interop loader. Test suite: **72 tests**, all passing (`DRY_RUN=true npm test`).
+3. **Locate:** Tanyakan kepada user apakah fokus pada deploy (6.2), hardening, atau fitur baru di luar roadmap.
+4. **Review State:** Minta user menempelkan error terakhir atau area kode yang ingin diubah.
+5. **Execute:** Lanjutkan dengan mengacu pada blueprint arsitektur di atas dan file structure yang ada.
 
 
 ## 6. TECH STACK REFERENCE
@@ -192,7 +212,8 @@ Jika Anda (AI) baru saja di-*reset* atau kehilangan konteks, ikuti prosedur ini 
 | **RPC** | Helius | Mainnet |
 | **Swap** | Jupiter API v6 | `quote-api.jup.ag/v6` |
 | **LLM** | OpenAI-compatible endpoint | Custom endpoint (9router) |
-| **Vector DB** | ZVec v0.5.0 | Embedded, FTS + hybrid search |
+| **Pattern memory** | ZVec-style (`tools/study.js`) | JSON store + cosine similarity + FTS hybrid |
+| **Market data** | DexScreener API | Optional screening enrichment (no API key) |
 | **Dashboard** | Express + WebSocket | Vanilla HTML/CSS/JS SPA |
 | **Scripts** | Python 3.11 | Watchdog scripts (watch-zero, watch-jotchua) |
 | **Deploy** | Coolify v4.1.0 | Traefik proxy, auto-SSL |

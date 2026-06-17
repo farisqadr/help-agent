@@ -1,12 +1,14 @@
 # Phase 5: Self-Learning & Optimization Implementation Plan
 
+> **Status:** Implemented 2026-06-17 in `farisqadr/help-agent`. All MRD TODOs 5.1–5.5 complete. Post-phase: DexScreener enrichment tracked as MRD TODO 2.3.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Complete Meridian Phase 5 (MRD TODOs 5.1, 5.3, 5.4, 5.5) — post-trade PnL analysis, feedback-driven screening/exit tuning, dashboard live charts, and HiveMind cross-agent learning — building on the completed ZVec memory integration (TODO 5.2).
+**Goal:** Complete Phase 5 (MRD TODOs 5.1, 5.3, 5.4, 5.5) — post-trade PnL analysis, feedback-driven screening/exit tuning, dashboard live charts, and HiveMind cross-agent learning — building on the completed ZVec-style memory integration (TODO 5.2).
 
-**Architecture:** After each position close, `pnl-analysis.js` compares actual vs expected PnL and writes structured records to `trade-history.json`. `feedback-loop.js` reads that history plus ZVec pattern memory (`tools/study.js`) to adjust screening score weights and exit thresholds in `user-config.json`. Dashboard exposes `/api/charts/*` WebSocket + REST endpoints consumed by a vanilla JS chart module. `hivemind.js` publishes anonymized pool insights to a shared JSON store (`hivemind-insights.json`) that screening reads at cycle start.
+**Architecture:** After each position close, `pnl-analysis.js` compares actual vs expected PnL and writes structured records to `trade-history.json`. `feedback-loop.js` reads that history plus pattern memory (`tools/study.js`) to adjust screening score weights and exit thresholds in `user-config.json`. Dashboard exposes `/api/charts/*` WebSocket + REST endpoints consumed by a vanilla JS chart module. `hivemind.js` publishes anonymized pool insights to a shared JSON store (`hivemind-insights.json`) that screening reads at cycle start.
 
-**Tech Stack:** Node.js 22+ ESM, `@meteora-ag/dlmm` v1.9.4, ZVec v0.5.0, Express + WebSocket dashboard, Jupiter API v6, Helius RPC, Node built-in test runner (`node:test` + `node:assert/strict`).
+**Tech Stack:** Node.js 22+ ESM, `@meteora-ag/dlmm` v1.9.4, ZVec-style pattern store (`data/zvec/`), Express + WebSocket dashboard, Jupiter API v6, Helius RPC, Node built-in test runner (`node:test` + `node:assert/strict`).
 
 ---
 
@@ -14,15 +16,15 @@
 
 | # | Assumption / Question | Impact if wrong |
 |---|------------------------|-----------------|
-| A1 | Implementation happens in private repo `farisqadr/meridian` at paths from MRD (`state.js`, `tools/screening.js`, `tools/study.js`, `dashboard/`). This `help-agent` repo holds docs + deployment config only. | File paths in tasks need remapping. |
-| A2 | TODO 5.2 (ZVec) is done in `tools/study.js` with exports `storeTradePattern(trade)` and `searchSimilarPatterns(query, limit)`. | Task 3 must adapt to actual ZVec API. |
+| A1 | Implementation lives in `farisqadr/help-agent` (consolidated greenfield build). | ~~File paths need remapping from meridian.~~ Resolved. |
+| A2 | TODO 5.2 (pattern memory) is done in `tools/study.js` with exports `storeTradePattern(trade)` and `searchSimilarPatterns(query, limit)`. | Task 3 adapted to JSON-backed hybrid search API. |
 | A3 | `state.js` already tracks `expectedPnlSol`, `actualPnlSol`, `entryPrice`, `exitPrice`, `poolAddress`, `strategyMode`, `closedAt` per position. | Task 1 extends schema if fields missing. |
 | A4 | Screening weights live in `user-config.json` under `screening.weights` (object of factor → number). | Task 3 defines schema if different. |
 | Q1 | Should HiveMind insights sync across servers (S3/Redis) or single-server JSON file is sufficient for v1? | Plan uses local JSON; upgrade path noted in Task 8. |
 | Q2 | Does `help.xflow.id` proxy to Meridian dashboard (4321) or serve a static landing page from `help-agent`? | Task 7 assumes dashboard is Meridian; Coolify checklist in MRD §3 is separate. |
 | Q3 | Which chart library is preferred — Chart.js (CDN) or pure Canvas? | Plan uses Chart.js 4.x via CDN for speed. |
 
-## File Map (Phase 5 — Meridian Engine)
+## File Map (Phase 5 — help-agent Engine)
 
 | File | Responsibility |
 |------|----------------|
@@ -852,20 +854,15 @@ describe('phase5 integration', () => {
 Run: `node --test tests/`
 Expected: All tests PASS
 
-- [ ] **Step 3: Update HELP-MRD.md Phase 5 tracker**
+- [x] **Step 3: Update HELP-MRD.md Phase 5 tracker**
 
-Mark TODO 5.1, 5.3, 5.4, 5.5 as ✅ DONE with date 2026-06-17.
+Mark TODO 5.1, 5.2, 5.3, 5.4, 5.5 as ✅ DONE with date 2026-06-17.
 
-- [ ] **Step 4: Commit (both repos)**
+- [x] **Step 4: Commit**
 
 ```bash
-# meridian
-git add tests/integration/phase5.test.js
-git commit -m "test: phase 5 integration coverage"
-
-# help-agent
-git add HELP-MRD.md
-git commit -m "docs: mark Phase 5 TODOs complete"
+git add HELP-MRD.md README.md docs/superpowers/plans/
+git commit -m "docs: sync MRD, README, and plans with current state"
 ```
 
 ---
@@ -877,7 +874,7 @@ git commit -m "docs: mark Phase 5 TODOs complete"
 | MRD Requirement | Plan Task |
 |-------------------|-----------|
 | TODO 5.1 Post-trade PnL analysis | Task 1 |
-| TODO 5.2 ZVec memory (DONE) | Referenced as dependency in Task 1 Step 5 |
+| TODO 5.2 Pattern memory (DONE) | Referenced as dependency in Task 1 Step 5 |
 | TODO 5.3 Feedback loop → auto-adjust weights | Task 3 |
 | TODO 5.4 Dashboard live charts | Tasks 2, 5, 6 |
 | TODO 5.5 HiveMind cross-agent learning | Task 4 |
@@ -898,10 +895,4 @@ No TBD/TODO/implement-later patterns. All code blocks contain concrete implement
 
 ## Execution Handoff
 
-**Plan complete and saved to `docs/superpowers/plans/2026-06-17-phase-5-self-learning-optimization.md`. Two execution options:**
-
-**1. Subagent-Driven (recommended)** — Dispatch a fresh subagent per task, review between tasks, fast iteration
-
-**2. Inline Execution** — Execute tasks in this session using executing-plans, batch execution with checkpoints
-
-**Which approach?**
+**Plan implemented 2026-06-17.** Remaining operator work: MRD TODO 6.2 (DNS + Coolify live deploy). For new features, start from HELP-MRD context recovery §5.
